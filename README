@@ -1,13 +1,13 @@
 0MQ Binding for Delphi
 ======================
 
-The aim of thw project is to bring 0MQ to the Delphi comunity. 
+The aim of the project is to bring 0MQ to the Delphi comunity. 
 
 General
 =======
 
 The package contains a wrapper (zmq.pas) for the dll, a delphi translation 
-for the C++ Api (zmqcpp.pas), and a higher level api (zmqapi.pas). 
+of the C++ Api (zmqcpp.pas), and a higher level api (zmqapi.pas). 
 
 Examples
 ========

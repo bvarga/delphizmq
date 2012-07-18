@@ -530,7 +530,7 @@ begin
   SetLength( sa, msg.Count );
   try
     for i := 0 to msg.Count - 1 do
-      sa[i] := msg[i];
+      sa[i] := AnsiString( msg[i] );
     result := send( sa, flags );
   finally
     sa := nil;
@@ -587,7 +587,7 @@ begin
         isize := list[i].size;
         SetLength( s, isize );
         CopyMemory( @s[1], list[i].data, isize );
-        msg.Add( s );
+        msg.Add( String( s ) );
       end;
     end;
   finally

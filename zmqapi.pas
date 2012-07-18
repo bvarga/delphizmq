@@ -105,21 +105,21 @@ type
     procedure setReconnectIvlMax( const Value: Integer );
     procedure setBacklog( const Value: Integer );
 
-    procedure Subscribe( filter: String );
-    procedure unSubscribe( filter: String );
+    procedure Subscribe( filter: AnsiString );
+    procedure unSubscribe( filter: AnsiString );
 
 
     function send( msg: TZMQMessage; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
 
-    function send( msg: Array of String; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function send( msg: Array of AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
     function send( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
-    function send( msg: String; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function send( msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
 
     function recv( msg: TZMQMessage; flags: TZMQRecvSendFlags = [] ): Boolean; reintroduce; overload;
 
     function recv( msgs: TZMQMessageList; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
     function recv( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
-    function recv( var msg: String; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function recv( var msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
 
     property SocketType: TZMQSocketType read getSocketType;
     property RcvMore: Boolean read getRcvMore;
@@ -466,7 +466,7 @@ begin
   setSockOptInteger( ZMQ_BACKLOG, Value );
 end;
 
-procedure TZMQSocket.subscribe( filter: String );
+procedure TZMQSocket.subscribe( filter: AnsiString );
 begin
   if filter = '' then
     setSockOpt( ZMQ_SUBSCRIBE, nil, 0 )
@@ -474,7 +474,7 @@ begin
     setSockOpt( ZMQ_SUBSCRIBE, @filter[1], Length( filter ) );
 end;
 
-procedure TZMQSocket.unSubscribe( filter: String );
+procedure TZMQSocket.unSubscribe( filter: AnsiString );
 begin
   if filter = '' then
     setSockOpt( ZMQ_UNSUBSCRIBE, nil, 0 )
@@ -487,7 +487,7 @@ begin
   result := inherited send( msg, Byte( flags ) );
 end;
 
-function TZMQSocket.send( msg: Array of String; flags: TZMQRecvSendFlags = [] ): Boolean;
+function TZMQSocket.send( msg: Array of AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean;
 var
   i,l: Integer;
   zmqMsg: TZMQMessage;
@@ -524,7 +524,7 @@ end;
 
 function TZMQSocket.send( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolean;
 var
-  sa: Array of String;
+  sa: Array of AnsiString;
   i: Integer;
 begin
   SetLength( sa, msg.Count );
@@ -537,7 +537,7 @@ begin
   end;
 end;
 
-function TZMQSocket.send( msg: String; flags: TZMQRecvSendFlags = [] ): Boolean;
+function TZMQSocket.send( msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean;
 begin
   result := Send( [msg], flags );
 end;
@@ -575,7 +575,7 @@ function TZMQSocket.recv( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolea
 var
   list: TZMQMessageList;
   i,isize: Integer;
-  s: String;
+  s: AnsiString;
 begin
   list := TZMQMessageList.Create;
   try
@@ -595,7 +595,7 @@ begin
   end;
 end;
 
-function TZMQSocket.recv( var msg: String; flags: TZMQRecvSendFlags = [] ): Boolean;
+function TZMQSocket.recv( var msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean;
 var
   zmqmsg: TZMQMessage;
   l: Integer;

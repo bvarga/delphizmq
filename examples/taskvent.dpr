@@ -17,7 +17,7 @@ var
   context: TZMQContext;
   sender,
   sink: TZMQSocket;
-  s: String;
+  s: AnsiString;
   task_nbr,
   total_msec,
   workload: Integer;

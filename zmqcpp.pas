@@ -99,7 +99,7 @@ const
 constructor error_t.Create;
 begin
   errnum := zmq_errno;
-  inherited Create( String( zmq_strerror( errnum ) ) );
+  inherited Create( AnsiString( zmq_strerror( errnum ) ) );
 end;
 
 function poll( var items: zmq_pollitem_t; nitems: Integer; timeout: Longint = -1 ): Integer;

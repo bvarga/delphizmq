@@ -17,7 +17,7 @@ var
   context: TZMQContext;
   receiver,
   controller: TZMQSocket;
-  s: String;
+  s: AnsiString;
 
   task_nbr: Integer;
   fFrequency,

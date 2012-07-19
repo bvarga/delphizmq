@@ -82,8 +82,8 @@ type
     procedure close;
     procedure setSockOpt( option: Integer; optval: Pointer; optvallen: size_t );
     procedure getSockOpt( option: Integer; optval: Pointer; var optvallen: size_t );
-    procedure bind( addr: AnsiString );
-    procedure connect( addr: AnsiString );
+    procedure bind( addr: String );
+    procedure connect( addr: String );
     function send( msg: message_t; flags: Integer = 0 ): Boolean; overload;
     function recv( msg: message_t; flags: Integer = 0 ): Boolean; overload;
     property ptr: Pointer read fSocket;
@@ -249,15 +249,15 @@ begin
     raise error_t.Create;
 end;
 
-procedure socket_t.bind( addr: AnsiString );
+procedure socket_t.bind( addr: String );
 begin
-  if zmq_bind( ptr, PAnsiChar( addr ) ) <> 0 then
+  if zmq_bind( ptr, PAnsiChar( AnsiString( addr ) ) ) <> 0 then
     raise error_t.Create;
 end;
 
-procedure socket_t.connect( addr: AnsiString );
+procedure socket_t.connect( addr: String );
 begin
-  if zmq_connect( ptr, PAnsiChar( addr ) ) <> 0 then
+  if zmq_connect( ptr, PAnsiChar( AnsiString( addr ) ) ) <> 0 then
     raise error_t.Create;
 end;
 

@@ -14,7 +14,7 @@ uses
 var
   context: TZMQContext;
   responder: TZMQSocket;
-  s: AnsiString;
+  s: String;
 begin
   context := TZMQContext.Create( 1 );
 

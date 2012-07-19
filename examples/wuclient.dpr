@@ -19,11 +19,11 @@ var
   context: TZMQContext;
   subscriber: TZMQSocket;
 
-  filter: AnsiString;
+  filter: String;
   update_nbr: Integer;
   total_temp: Integer = 0;
 
-  s: AnsiString;
+  s: String;
   tsl: TStringList;
 begin
   context := TZMQContext.Create( 1 );

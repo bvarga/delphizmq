@@ -29,24 +29,6 @@ type
   EZMQException = zmqcpp.error_t;
   TZMQMessage = message_t;
 
-  TZMQMessageList = class
-  private
-    fitems: TList;
-    function getCount: Integer;
-    function getItems(indx: Integer): TZMQMessage;
-  protected
-    procedure Add( ZMQMessage: TZMQMessage );
-    procedure Delete( indx: Integer );
-    property Items[indx: Integer]: TZMQMessage read getItems; default;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Clear;
-
-
-    property Count: Integer read getCount;
-  end;
-
   TZMQContext = zmqcpp.context_t;
 
   TZMQSocketType = ( stPair, stPub, stSub, stReq, stRep, stDealer,
@@ -105,21 +87,20 @@ type
     procedure setReconnectIvlMax( const Value: Integer );
     procedure setBacklog( const Value: Integer );
 
-    procedure Subscribe( filter: AnsiString );
-    procedure unSubscribe( filter: AnsiString );
-
+    procedure Subscribe( filter: String );
+    procedure unSubscribe( filter: String );
 
     function send( msg: TZMQMessage; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
-
-    function send( msg: Array of AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
-    function send( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
-    function send( msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function send( strm: TStream; size: Integer; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function send( msg: String; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function send( msg: Array of String; flags: TZMQRecvSendFlags = [] ): Integer; overload;
+    function send( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Integer; overload;
 
     function recv( msg: TZMQMessage; flags: TZMQRecvSendFlags = [] ): Boolean; reintroduce; overload;
-
-    function recv( msgs: TZMQMessageList; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
-    function recv( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
-    function recv( var msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function recv( strm: TStream; var size: Integer; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function recv( strm: TStream; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function recv( var msg: String; flags: TZMQRecvSendFlags = [] ): Boolean; overload;
+    function recv( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Integer; overload;
 
     property SocketType: TZMQSocketType read getSocketType;
     property RcvMore: Boolean read getRcvMore;
@@ -179,50 +160,6 @@ uses
     Windows
   , zmq
   ;
-
-{ TZMQMessageList }
-
-constructor TZMQMessageList.Create;
-begin
-  fItems := TList.Create;
-end;
-
-destructor TZMQMessageList.Destroy;
-begin
-  Clear;
-  fItems.Free;
-  inherited;
-end;
-
-procedure TZMQMessageList.Clear;
-var
-  i: Integer;
-begin
-  for i := 0 to Count - 1 do
-     Items[i].Free;
-  fItems.Clear;
-end;
-
-function TZMQMessageList.getCount: Integer;
-begin
-  result := fItems.Count;
-end;
-
-function TZMQMessageList.getItems( indx: Integer ): TZMQMessage;
-begin
-  result := fItems[indx];
-end;
-
-procedure TZMQMessageList.Add( ZMQMessage: TZMQMessage );
-begin
-  fItems.Add( ZMQMessage );
-end;
-
-procedure TZMQMessageList.Delete( indx: Integer );
-begin
-  Items[indx].Free;
-  fItems.Delete( indx );
-end;
 
 { T0MQSocket }
 
@@ -466,148 +403,147 @@ begin
   setSockOptInteger( ZMQ_BACKLOG, Value );
 end;
 
-procedure TZMQSocket.subscribe( filter: AnsiString );
+procedure TZMQSocket.subscribe( filter: String );
+var
+  sFilter: AnsiString;
 begin
-  if filter = '' then
+  sFilter := AnsiString( filter );
+  if sfilter = '' then
     setSockOpt( ZMQ_SUBSCRIBE, nil, 0 )
   else
-    setSockOpt( ZMQ_SUBSCRIBE, @filter[1], Length( filter ) );
+    setSockOpt( ZMQ_SUBSCRIBE, @sfilter[1], Length( sfilter ) );
 end;
 
-procedure TZMQSocket.unSubscribe( filter: AnsiString );
+procedure TZMQSocket.unSubscribe( filter: String );
+var
+  sFilter: AnsiString;
 begin
-  if filter = '' then
+  sFilter := AnsiString( filter );
+  if sfilter = '' then
     setSockOpt( ZMQ_UNSUBSCRIBE, nil, 0 )
   else
-    setSockOpt( ZMQ_UNSUBSCRIBE, @filter[1], Length( filter ) );
+    setSockOpt( ZMQ_UNSUBSCRIBE, @sfilter[1], Length( sfilter ) );
 end;
 
+// send singe message
 function TZMQSocket.send( msg: TZMQMessage; flags: TZMQRecvSendFlags = [] ): Boolean;
 begin
   result := inherited send( msg, Byte( flags ) );
 end;
 
-function TZMQSocket.send( msg: Array of AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean;
+// send single message
+function TZMQSocket.send( strm: TStream; size: Integer; flags: TZMQRecvSendFlags = [] ): Boolean;
 var
-  i,l: Integer;
   zmqMsg: TZMQMessage;
-  lflags: TZMQRecvSendFlags;
 begin
-  Result := True;
-  if Length( msg ) = 0 then
-    exit;
-  lflags := flags;
-  Exclude( lflags, rsfSndMore );
-
-  zmqMsg := TZMQMessage.Create( Length( msg[0] ) );
+  zmqMsg := TZMQMessage.Create( size );
   try
-    i := 0;
-    l := Length( msg );
-    result := true;
-    while result and ( i < l ) do
-    begin
-      CopyMemory( zmqMsg.data, @msg[i][1], Length( msg[i] ) );
-      if i = l - 1 then
-      begin
-        result := send( zmqMsg, lflags );
-      end else
-      begin
-        result := send( zmqMsg, lflags + [rsfSndMore] );
-        zmqMsg.rebuild( Length( msg[i+1] ));
-      end;
-      inc( i );
-    end;
+    strm.Read( zmqMsg.data^, size );
+    result := send( zmqMsg, flags );
   finally
     zmqMsg.Free;
   end;
 end;
 
-function TZMQSocket.send( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolean;
+// send single message.
+function TZMQSocket.send( msg: String; flags: TZMQRecvSendFlags = [] ): Boolean;
 var
-  sa: Array of AnsiString;
-  i: Integer;
+  sStrm: TStringStream;
 begin
-  SetLength( sa, msg.Count );
+  sStrm := TStringStream.Create( msg );
   try
-    for i := 0 to msg.Count - 1 do
-      sa[i] := AnsiString( msg[i] );
-    result := send( sa, flags );
+    result := send( sStrm, sStrm.Size, flags );
   finally
-    sa := nil;
+    sStrm.Free;
   end;
 end;
 
-function TZMQSocket.send( msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean;
+// send multipart message
+function TZMQSocket.send( msg: Array of String; flags: TZMQRecvSendFlags = [] ): Integer;
 begin
-  result := Send( [msg], flags );
+  Result := 0;
+  while result < Length( msg ) do
+  begin
+    if result = Length( msg ) - 1 then
+      send( msg[result], flags )
+    else
+      send( msg[result], flags + [rsfSndMore] );
+    inc( result );
+  end;
 end;
 
+// send multipart message
+function TZMQSocket.send( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Integer;
+begin
+  result := 0;
+  while result < msg.Count do
+  begin
+    if result = msg.Count - 1 then
+      send( msg[result], flags )
+    else
+      send( msg[result], flags + [rsfSndMore] );
+    inc( result );
+  end;
+end;
+
+// receive s single message
 function TZMQSocket.recv( msg: TZMQMessage; flags: TZMQRecvSendFlags = [] ): Boolean;
 begin
   result := inherited recv( msg, Byte( flags ) );
 end;
 
-function TZMQSocket.recv( msgs: TZMQMessageList; flags: TZMQRecvSendFlags = [] ): Boolean;
-var
-  bRcvMore: Boolean;
-  msgCount: Integer;
-begin
-  msgCount := 0;
-  result := true;
-  bRcvMore := true;
-  msgs.Add( TZMQMessage.Create );
-  while result and bRcvMore do
-  begin
-    result := recv( TZMQMessage( msgs[ msgs.count - 1 ] ), flags );
-    if not result then
-      msgs.Delete( msgs.count - 1 )
-    else
-      inc( msgCount );
-    bRcvMore := rcvMore;
-    if result and bRcvMore then
-      msgs.Add( TZMQMessage.Create );
-  end;
-  if not result and ( msgCount > 0 ) then
-    raise EZMQException.Create( 'Multipart message couldn''t receive all of the messages in non-blocking mode!' );
-end;
-
-function TZMQSocket.recv( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Boolean;
-var
-  list: TZMQMessageList;
-  i,isize: Integer;
-  s: AnsiString;
-begin
-  list := TZMQMessageList.Create;
-  try
-    result := recv( list, flags );
-    if result then
-    begin
-      for i := 0 to list.count - 1 do
-      begin
-        isize := list[i].size;
-        SetLength( s, isize );
-        CopyMemory( @s[1], list[i].data, isize );
-        msg.Add( String( s ) );
-      end;
-    end;
-  finally
-    list.free;
-  end;
-end;
-
-function TZMQSocket.recv( var msg: AnsiString; flags: TZMQRecvSendFlags = [] ): Boolean;
+// receive a single message
+function TZMQSocket.recv( strm: TStream; var size: Integer; flags: TZMQRecvSendFlags = [] ): Boolean;
 var
   zmqmsg: TZMQMessage;
-  l: Integer;
 begin
   zmqmsg := TZMQMessage.Create;
   try
     result := recv( zmqmsg, flags );
-    l := zmqmsg.size;
-    SetLength( msg, l );
-    CopyMemory( @msg[1], zmqmsg.data, l );
+    size := zmqmsg.size;
+    strm.Write( zmqmsg.data^, size );
   finally
     zmqmsg.Free;
+  end;
+end;
+
+// receive a single message
+function TZMQSocket.recv( strm: TStream; flags: TZMQRecvSendFlags = [] ): Boolean;
+var
+  size: Integer;
+begin
+  result := recv( strm, size, flags );
+end;
+
+// receive a single message
+function TZMQSocket.recv( var msg: String; flags: TZMQRecvSendFlags = [] ): Boolean;
+var
+  sStrm: TStringStream;
+  size: Integer;
+begin
+  sStrm := TStringStream.Create('');
+  try
+    Result := recv( sStrm, size, flags );
+    sStrm.Position := 0;
+    msg := sStrm.ReadString( size );
+  finally
+    sStrm.Free;
+  end;
+end;
+
+// receive multipart message.
+function TZMQSocket.recv( msg: TStrings; flags: TZMQRecvSendFlags = [] ): Integer;
+var
+  s: String;
+  bRcvMore: Boolean;
+begin
+  bRcvMore := True;
+  result := 0;
+  while recv( s, flags ) and bRcvMore do
+  begin
+    msg.Add( s );
+    inc( result );
+    bRcvMore := RcvMore;
   end;
 end;
 

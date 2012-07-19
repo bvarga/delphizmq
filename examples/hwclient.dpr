@@ -15,7 +15,7 @@ var
   context: TZMQContext;
   requester: TZMQSocket;
   i: Integer;
-  sMsg: AnsiString;
+  sMsg: String;
 begin
   context := TZMQContext.Create( 1 );
 
@@ -26,10 +26,11 @@ begin
 
   for i := 0 to 9 do
   begin
-    Writeln( Format( 'Sending Hello %d',[ i ] ));
-    requester.send( 'Hello' );
+    sMsg := 'Hello';
+    Writeln( Format( 'Sending %s %d',[ sMsg, i ] ));
+    requester.send( sMsg );
     requester.recv( sMsg );
-    Writeln( Format( 'Received World %d', [ i ] ) );
+    Writeln( Format( 'Received %s %d', [ sMsg, i ] ) );
   end;
 
   requester.Free;

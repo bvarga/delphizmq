@@ -15,7 +15,7 @@ var
   receiver,
   sender,
   controller: TZMQSocket;
-  s: AnsiString;
+  s: String;
   poller: TZMQPoller;
   pr: TZMQPollResult;
   i,pc: Integer;

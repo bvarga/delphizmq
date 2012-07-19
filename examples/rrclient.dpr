@@ -15,7 +15,7 @@ var
   context: TZMQContext;
   requester: TZMQSocket;
   i: Integer;
-  s: AnsiString;
+  s: String;
 begin
   context := TZMQContext.Create( 1 );
 

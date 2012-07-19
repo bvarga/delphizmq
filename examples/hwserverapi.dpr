@@ -14,7 +14,7 @@ uses
 var
   context: TZMQContext;
   socket: TZMQSocket;
-  sMsg: AnsiString;
+  sMsg: String;
 
 begin
   //  Prepare our context and socket
@@ -26,7 +26,7 @@ begin
   begin
     //  Wait for next request from client
     socket.recv( sMsg );
-    Writeln( 'Received Hello' );
+    Writeln( Format( 'Received %s', [sMsg] ) );
 
     //  Do some 'work'
     sleep( 1 );

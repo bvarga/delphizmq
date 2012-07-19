@@ -12,7 +12,7 @@ uses
 procedure worker_routine( lcontext: TZMQContext );
 var
   receiver: TZMQSocket;
-  s: AnsiString;
+  s: String;
 begin
   //  Socket to talk to dispatcher
   receiver := TZMQSocket.Create( lcontext, stRep );

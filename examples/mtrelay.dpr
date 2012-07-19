@@ -25,7 +25,7 @@ procedure step2( lcontext: TZMQContext );
 var
   receiver,
   xmitter: TZMQSocket;
-  s: AnsiString;
+  s: String;
   tid: Cardinal;
 begin
   //  Bind inproc socket before starting step1
@@ -49,7 +49,7 @@ var
   context: TZMQContext;
   receiver: TZMQSocket;
   tid: Cardinal;
-  s: AnsiString;
+  s: String;
 begin
   context := TZMQContext.Create( 1 );
 

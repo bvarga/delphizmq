@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+  <PersonalityInfo>
+    <Option>
+      <Option Name="Personality">Default.Personality</Option>
+      <Option Name="ProjectType"></Option>
+      <Option Name="Version">1.0</Option>
+      <Option Name="GUID">{6420A882-D560-4612-BDC4-CD5F245373D3}</Option>
+    </Option>
+  </PersonalityInfo>
+  <Default.Personality>
+    
+    
+    
+    <Projects>
+      <Projects Name="benchmark_server.exe">benchmark_server.bdsproj</Projects>
+      <Projects Name="benchmark_client.exe">benchmark_client.bdsproj</Projects>
+      <Projects Name="Targets">benchmark_server.exe benchmark_client.exe</Projects>
+    </Projects>
+    <Dependencies/>
+  </Default.Personality>
+</BorlandProject>

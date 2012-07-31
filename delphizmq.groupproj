@@ -1,0 +1,276 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{6D6CF0B6-222B-4E83-8A32-EFE462BBE72B}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="examples\hwclient.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\hwserver.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\hwserverapi.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\version.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\wuserver.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\wuclient.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\taskvent.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\taskwork.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\tasksink.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\msreader.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\mspoller.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\taskwork2.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\tasksink2.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\interrupt.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\wuproxy.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\rrclient.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\rrserver.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\rrbroker.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\msgqueue.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\mtserver.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="examples\mtrelay.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="hwclient">
+			<MSBuild Projects="examples\hwclient.dproj"/>
+		</Target>
+		<Target Name="hwclient:Clean">
+			<MSBuild Projects="examples\hwclient.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="hwclient:Make">
+			<MSBuild Projects="examples\hwclient.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="hwserver">
+			<MSBuild Projects="examples\hwserver.dproj"/>
+		</Target>
+		<Target Name="hwserver:Clean">
+			<MSBuild Projects="examples\hwserver.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="hwserver:Make">
+			<MSBuild Projects="examples\hwserver.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="hwserverapi">
+			<MSBuild Projects="examples\hwserverapi.dproj"/>
+		</Target>
+		<Target Name="hwserverapi:Clean">
+			<MSBuild Projects="examples\hwserverapi.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="hwserverapi:Make">
+			<MSBuild Projects="examples\hwserverapi.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="version">
+			<MSBuild Projects="examples\version.dproj"/>
+		</Target>
+		<Target Name="version:Clean">
+			<MSBuild Projects="examples\version.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="version:Make">
+			<MSBuild Projects="examples\version.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="wuserver">
+			<MSBuild Projects="examples\wuserver.dproj"/>
+		</Target>
+		<Target Name="wuserver:Clean">
+			<MSBuild Projects="examples\wuserver.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="wuserver:Make">
+			<MSBuild Projects="examples\wuserver.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="wuclient">
+			<MSBuild Projects="examples\wuclient.dproj"/>
+		</Target>
+		<Target Name="wuclient:Clean">
+			<MSBuild Projects="examples\wuclient.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="wuclient:Make">
+			<MSBuild Projects="examples\wuclient.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="taskvent">
+			<MSBuild Projects="examples\taskvent.dproj"/>
+		</Target>
+		<Target Name="taskvent:Clean">
+			<MSBuild Projects="examples\taskvent.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="taskvent:Make">
+			<MSBuild Projects="examples\taskvent.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="taskwork">
+			<MSBuild Projects="examples\taskwork.dproj"/>
+		</Target>
+		<Target Name="taskwork:Clean">
+			<MSBuild Projects="examples\taskwork.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="taskwork:Make">
+			<MSBuild Projects="examples\taskwork.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="tasksink">
+			<MSBuild Projects="examples\tasksink.dproj"/>
+		</Target>
+		<Target Name="tasksink:Clean">
+			<MSBuild Projects="examples\tasksink.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="tasksink:Make">
+			<MSBuild Projects="examples\tasksink.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="msreader">
+			<MSBuild Projects="examples\msreader.dproj"/>
+		</Target>
+		<Target Name="msreader:Clean">
+			<MSBuild Projects="examples\msreader.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="msreader:Make">
+			<MSBuild Projects="examples\msreader.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="mspoller">
+			<MSBuild Projects="examples\mspoller.dproj"/>
+		</Target>
+		<Target Name="mspoller:Clean">
+			<MSBuild Projects="examples\mspoller.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="mspoller:Make">
+			<MSBuild Projects="examples\mspoller.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="taskwork2">
+			<MSBuild Projects="examples\taskwork2.dproj"/>
+		</Target>
+		<Target Name="taskwork2:Clean">
+			<MSBuild Projects="examples\taskwork2.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="taskwork2:Make">
+			<MSBuild Projects="examples\taskwork2.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="tasksink2">
+			<MSBuild Projects="examples\tasksink2.dproj"/>
+		</Target>
+		<Target Name="tasksink2:Clean">
+			<MSBuild Projects="examples\tasksink2.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="tasksink2:Make">
+			<MSBuild Projects="examples\tasksink2.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="interrupt">
+			<MSBuild Projects="examples\interrupt.dproj"/>
+		</Target>
+		<Target Name="interrupt:Clean">
+			<MSBuild Projects="examples\interrupt.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="interrupt:Make">
+			<MSBuild Projects="examples\interrupt.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="wuproxy">
+			<MSBuild Projects="examples\wuproxy.dproj"/>
+		</Target>
+		<Target Name="wuproxy:Clean">
+			<MSBuild Projects="examples\wuproxy.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="wuproxy:Make">
+			<MSBuild Projects="examples\wuproxy.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="rrclient">
+			<MSBuild Projects="examples\rrclient.dproj"/>
+		</Target>
+		<Target Name="rrclient:Clean">
+			<MSBuild Projects="examples\rrclient.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="rrclient:Make">
+			<MSBuild Projects="examples\rrclient.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="rrserver">
+			<MSBuild Projects="examples\rrserver.dproj"/>
+		</Target>
+		<Target Name="rrserver:Clean">
+			<MSBuild Projects="examples\rrserver.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="rrserver:Make">
+			<MSBuild Projects="examples\rrserver.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="rrbroker">
+			<MSBuild Projects="examples\rrbroker.dproj"/>
+		</Target>
+		<Target Name="rrbroker:Clean">
+			<MSBuild Projects="examples\rrbroker.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="rrbroker:Make">
+			<MSBuild Projects="examples\rrbroker.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="msgqueue">
+			<MSBuild Projects="examples\msgqueue.dproj"/>
+		</Target>
+		<Target Name="msgqueue:Clean">
+			<MSBuild Projects="examples\msgqueue.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="msgqueue:Make">
+			<MSBuild Projects="examples\msgqueue.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="mtserver">
+			<MSBuild Projects="examples\mtserver.dproj"/>
+		</Target>
+		<Target Name="mtserver:Clean">
+			<MSBuild Projects="examples\mtserver.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="mtserver:Make">
+			<MSBuild Projects="examples\mtserver.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="mtrelay">
+			<MSBuild Projects="examples\mtrelay.dproj"/>
+		</Target>
+		<Target Name="mtrelay:Clean">
+			<MSBuild Projects="examples\mtrelay.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="mtrelay:Make">
+			<MSBuild Projects="examples\mtrelay.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="hwclient;hwserver;hwserverapi;version;wuserver;wuclient;taskvent;taskwork;tasksink;msreader;mspoller;taskwork2;tasksink2;interrupt;wuproxy;rrclient;rrserver;rrbroker;msgqueue;mtserver;mtrelay"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="hwclient:Clean;hwserver:Clean;hwserverapi:Clean;version:Clean;wuserver:Clean;wuclient:Clean;taskvent:Clean;taskwork:Clean;tasksink:Clean;msreader:Clean;mspoller:Clean;taskwork2:Clean;tasksink2:Clean;interrupt:Clean;wuproxy:Clean;rrclient:Clean;rrserver:Clean;rrbroker:Clean;msgqueue:Clean;mtserver:Clean;mtrelay:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="hwclient:Make;hwserver:Make;hwserverapi:Make;version:Make;wuserver:Make;wuclient:Make;taskvent:Make;taskwork:Make;tasksink:Make;msreader:Make;mspoller:Make;taskwork2:Make;tasksink2:Make;interrupt:Make;wuproxy:Make;rrclient:Make;rrserver:Make;rrbroker:Make;msgqueue:Make;mtserver:Make;mtrelay:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>

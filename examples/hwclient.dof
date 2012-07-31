@@ -134,3 +134,15 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
+[HistoryLists\hlUnitAliases]
+Count=1
+Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
+[HistoryLists\hlSearchPath]
+Count=1
+Item0=..\
+[HistoryLists\hlUnitOutputDirectory]
+Count=1
+Item0=..\dcu
+[HistoryLists\hlOutputDirectorry]
+Count=1
+Item0=..\bin

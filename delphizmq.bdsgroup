@@ -10,8 +10,6 @@
 	</PersonalityInfo>
 	<Default.Personality>  
     
-    
-    
     <Projects>
       <Projects Name="hwclient.exe">examples\hwclient.bdsproj</Projects>
       <Projects Name="hwserver.exe">examples\hwserver.bdsproj</Projects>
@@ -34,7 +32,9 @@
       <Projects Name="msgqueue.exe">examples\msgqueue.bdsproj</Projects>
       <Projects Name="mtserver.exe">examples\mtserver.bdsproj</Projects>
       <Projects Name="mtrelay.exe">examples\mtrelay.bdsproj</Projects>
-      <Projects Name="Targets">hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe</Projects>
+      <Projects Name="syncpub.exe">examples\syncpub.bdsproj</Projects>
+      <Projects Name="syncsub.exe">examples\syncsub.bdsproj</Projects>
+      <Projects Name="Targets">hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe syncpub.exe syncsub.exe</Projects>
     </Projects>
     <Dependencies/>
   </Default.Personality>

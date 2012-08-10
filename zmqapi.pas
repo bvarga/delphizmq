@@ -542,7 +542,7 @@ var
 begin
   bRcvMore := True;
   result := 0;
-  while recv( s, flags ) and bRcvMore do
+  while bRcvMore and recv( s, flags ) do
   begin
     msg.Add( s );
     inc( result );

@@ -17,9 +17,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 }
 unit zmqapi;
-{$ifdef fpc}
-  {$packset 1}
-{$endif}
+
+{$I zmq.inc}
 
 interface
 
@@ -54,16 +53,22 @@ type
 
     function getSocketType: TZMQSocketType;
     function getrcvMore: Boolean;
+    {$ifndef zmq3}
     function getHWM: Int64;
+    {$endif}
     function getRcvTimeout: Integer;
     function getSndTimeout: Integer;
+    {$ifndef zmq3}
     function getSwap: Int64;
+    {$endif}
     function getAffinity: Int64;
     function getIdentity: ShortString;
     function getRate: int64;
     function getRecoveryIvl: Int64;
+    {$ifndef zmq3}
     function getRecoveryIvlMSec: Int64;
     function getMCastLoop: Int64;
+    {$endif}
     function getSndBuf: Int64;
     function getRcvBuf: Int64;
     function getLinger: Integer;
@@ -73,16 +78,22 @@ type
     function getFD: Pointer;
     function getEvents: TZMQPollEvents;
 
+    {$ifndef zmq3}
     procedure setHWM( const Value: Int64 );
+    {$endif}
     procedure setRcvTimeout( const Value: Integer );
     procedure setSndTimeout( const Value: Integer );
+    {$ifndef zmq3}
     procedure setSwap( const Value: Int64 );
+    {$endif}
     procedure setAffinity( const Value: Int64 );
     procedure setIdentity( const Value: ShortString );
     procedure setRate( const Value: int64 );
     procedure setRecoveryIvl( const Value: Int64 );
+    {$ifndef zmq3}
     procedure setRecoveryIvlMSec( const Value: Int64 );
     procedure setMCastLoop( const Value: Int64 );
+    {$endif}
     procedure setSndBuf( const Value: Int64 );
     procedure setRcvBuf( const Value: Int64 );
     procedure setLinger( const Value: Integer );
@@ -107,16 +118,22 @@ type
 
     property SocketType: TZMQSocketType read getSocketType;
     property RcvMore: Boolean read getRcvMore;
+    {$ifndef zmq3}
     property HWM: Int64 read getHWM write setHWM; // should be uInt64
+    {$endif}
     property RcvTimeout: Integer read getRcvTimeout write setRcvTimeout;
     property SndTimeout: Integer read getSndTimeout write setSndTimeout;
+    {$ifndef zmq3}
     property Swap: Int64 read getSwap write setSwap;
+    {$endif}
     property Affinity: Int64 read getAffinity write setAffinity; // should be uInt64
     property Identity: ShortString read getIdentity write setIdentity;
     property Rate: int64 read getRate write setRate;
     property RecoveryIvl: Int64 read getRecoveryIvl write setRecoveryIvl;
+    {$ifndef zmq3}
     property RecoveryIvlMSec: Int64 read getRecoveryIvlMSec write setRecoveryIvlMSec;
     property MCastLoop: Int64 read getMCastLoop write setMCastLoop;
+    {$endif}
     property SndBuf: Int64 read getSndBuf write setSndBuf; // should be uInt64
     property RcvBuf: Int64 read getRcvBuf write setRcvBuf; // should be uInt64
     property Linger: Integer read getLinger write setLinger;
@@ -223,10 +240,12 @@ begin
   result := i = 1;
 end;
 
+{$ifndef zmq3}
 function TZMQSocket.getHWM: int64;
 begin
   result := getSockOptInt64( ZMQ_HWM );
 end;
+{$endif}
 
 function TZMQSocket.getRcvTimeout: Integer;
 begin
@@ -238,10 +257,12 @@ begin
   result := getSockOptInteger( ZMQ_SNDTIMEO );
 end;
 
+{$ifndef zmq3}
 function TZMQSocket.getSwap: Int64;
 begin
   result := getSockOptInt64( ZMQ_SWAP );
 end;
+{$endif}
 
 function TZMQSocket.getAffinity: Int64; // should be uInt64
 begin
@@ -267,6 +288,7 @@ begin
   result := getSockOptInt64( ZMQ_RECOVERY_IVL );
 end;
 
+{$ifndef zmq3}
 function TZMQSocket.getRecoveryIVLMSec: Int64;
 begin
   result := getSockOptInt64( ZMQ_RECOVERY_IVL_MSEC );
@@ -276,6 +298,7 @@ function TZMQSocket.getMCastLoop: Int64;
 begin
   result := getSockOptInt64( ZMQ_MCAST_LOOP );
 end;
+{$endif}
 
 function TZMQSocket.getSndBuf: Int64;
 begin
@@ -326,6 +349,7 @@ begin
   Result := TZMQPollEvents( Byte(i) );
 end;
 
+{$ifndef zmq3}
 procedure TZMQSocket.setHWM( const Value: Int64 );
 begin
   setSockOptInt64( ZMQ_HWM, Value );
@@ -335,6 +359,7 @@ procedure TZMQSocket.setSwap( const Value: Int64 );
 begin
   setSockOptInt64( ZMQ_SWAP, Value );
 end;
+{$endif}
 
 procedure TZMQSocket.setAffinity( const Value: Int64 );
 begin
@@ -366,6 +391,7 @@ begin
   setSockOptInt64( ZMQ_RECOVERY_IVL, Value );
 end;
 
+{$ifndef zmq3}
 procedure TZMQSocket.setRecoveryIvlMSec( const Value: Int64 );
 begin
   setSockOptInt64( ZMQ_RECOVERY_IVL_MSEC, Value );
@@ -375,6 +401,7 @@ procedure TZMQSocket.setMCastLoop( const Value: Int64 );
 begin
   setSockOptInt64( ZMQ_MCAST_LOOP, Value );
 end;
+{$endif}
 
 procedure TZMQSocket.setSndBuf( const Value: Int64 );
 begin

@@ -18,6 +18,8 @@
 }
 unit zmqcpp;
 
+{$I zmq.inc}
+
 interface
 
 uses
@@ -66,8 +68,19 @@ type
   private
     fContext: Pointer;
   public
-    constructor create( io_threads: Integer );
+    {$ifdef zmq3}
+    constructor create;
+    {$else}
+    constructor create( io_threads: Integer = 1 );
+    {$endif}
+
     destructor Destroy; override;
+
+    {$ifdef zmq3}
+    function get( option: Integer ): Integer;
+    procedure _set( option, optval: Integer );
+    //procedure set_monitor
+    {$endif}
     // ZMQ_HAS_RVALUE_REFS ??? howto ???
     property ptr: Pointer read fContext;
   end;
@@ -198,19 +211,47 @@ end;
 
 { context_t }
 
+{$ifdef zmq3}
+constructor context_t.create;
+begin
+  fContext := zmq_ctx_new;
+  if fContext = nil then
+    raise error_t.Create;
+end;
+{$else}
 constructor context_t.create( io_threads: Integer );
 begin
   fContext := zmq_init( io_threads );
   if fContext = nil then
     raise error_t.Create;
 end;
+{$endif}
 
 destructor context_t.destroy;
 begin
+  {$ifdef zmq3}
+  if zmq_ctx_destroy( fContext ) <> 0 then
+  {$else}
   if zmq_term( fContext ) <> 0 then
+  {$endif}
     raise error_t.Create;
   inherited;
 end;
+
+{$ifdef zmq3}
+function context_t.get( option: Integer ): Integer;
+begin
+  result := zmq_ctx_get( fContext, option );
+  if result < 0 then
+    raise error_t.Create;
+end;
+
+procedure context_t._set( option, optval: Integer );
+begin
+  if zmq_ctx_set( fContext, option, optval ) <> 0 then
+    raise error_t.Create;
+end;
+{$endif}
 
 { socket_t }
 

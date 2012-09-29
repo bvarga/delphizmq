@@ -27,14 +27,26 @@ uses
   , zmqcpp;
 
 type
+  TZMQSocket = class;
+
   TZMQFree = zmq_free_fn;
   EZMQException = zmqcpp.error_t;
   TZMQMessage = message_t;
 
-  TZMQContext = zmqcpp.context_t;
-
   TZMQSocketType = ( stPair, stPub, stSub, stReq, stRep, stDealer,
     stRouter, stPull, stPush, stXPub, stXSub );
+
+  TZMQContext = class( zmqcpp.context_t )
+    fSockets: TList;
+  public
+    {$ifdef zmq3}
+    constructor Create;
+    {$else}
+    constructor Create( io_threads: Integer );
+    {$endif}
+
+    function Socket( stype: TZMQSocketType ): TZMQSocket;
+  end;
 
   TZMQRecvSendFlag = ( rsfNoBlock, rsfSndMore );
   TZMQRecvSendFlags = set of TZMQRecvSendFlag;
@@ -180,6 +192,26 @@ uses
     Windows
   , zmq
   ;
+
+{ TZMQContext }
+
+{$ifdef zmq3}
+constructor TZMQContext.Create;
+begin
+  inherited;
+  fSockets := TList.Create;
+end;
+{$else}
+constructor TZMQContext.Create( io_threads: Integer );
+begin
+  inherited;
+end;
+{$endif}
+
+function TZMQContext.Socket(stype: TZMQSocketType): TZMQSocket;
+begin
+
+end;
 
 { T0MQSocket }
 

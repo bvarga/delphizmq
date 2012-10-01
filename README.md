@@ -69,6 +69,13 @@ Examples
 
 in the examples directory there are some examples translated from the guide.
 
+TODO
+====
+
+* if poll returns ETERM the socket with the terminated context should be 
+  removed from the poll, and closed;
+
+
 Copying
 =======
 

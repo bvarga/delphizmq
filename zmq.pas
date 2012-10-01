@@ -321,8 +321,8 @@ function zmq_disconnect(s: Pointer; addr: PAnsiChar): Integer; cdecl; external l
 {$endif}
 
 {$ifdef zmq3}
-function zmq_send (s: Pointer; buf: Pointer; len: Integer; flags: Integer): Integer; cdecl; external libzmq;
-function zmq_recv (s: Pointer; buf: Pointer; len: Integer; flags: Integer): Integer; cdecl; external libzmq;
+function zmq_send (s: Pointer; const buffer; len: size_t; flags: Integer): Integer; cdecl; external libzmq;
+function zmq_recv (s: Pointer; var buffer; len: size_t; flags: Integer): Integer; cdecl; external libzmq;
 {$else}
 function zmq_send (s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;
 function zmq_recv (s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;

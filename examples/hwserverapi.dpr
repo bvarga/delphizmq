@@ -7,9 +7,8 @@ program hwserverapi;
 {$APPTYPE CONSOLE}
 
 uses
-    SysUtils
-  , zmqapi
-  ;
+  SysUtils,
+  zmqapi;
 
 var
   context: TZMQContext;
@@ -18,8 +17,8 @@ var
 
 begin
   //  Prepare our context and socket
-  context := TZMQContext.Create( 1 );
-  socket := TZMQSocket.Create( context, stRep );
+  context := TZMQContext.Create;
+  socket := context.Socket( stRep );
   socket.bind( 'tcp://*:5555' );
 
   while true do

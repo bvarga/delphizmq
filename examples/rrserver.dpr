@@ -16,10 +16,10 @@ var
   responder: TZMQSocket;
   s: String;
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Socket to talk to clients
-  responder := TZMQSocket.Create( context, stRep );
+  responder := Context.Socket( stRep );
   responder.connect( 'tcp://localhost:5560' );
 
   while True do

@@ -25,12 +25,12 @@ var
   fStop : Int64;
 begin
   //  Prepare our context and socket
-  context := TZMQContext.Create(1);
-  receiver := TZMQSocket.Create( context, stPull );
+  context := TZMQContext.Create;
+  receiver := Context.Socket( stPull );
   receiver.bind( 'tcp://*:5558' );
 
   //  Socket for worker control
-  controller := TZMQSocket.Create( context, stPub );
+  controller := Context.Socket( stPub );
   controller.bind( 'tcp://*:5559' );
 
   //  Wait for start of batch

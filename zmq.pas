@@ -30,8 +30,7 @@ const
 {$endif}
 
 {  Run-time API version detection                                              }
-procedure zmq_version(var major, minor, patch: Integer); cdecl; external libzmq;
-
+procedure zmq_version( var major, minor, patch: Integer ); cdecl; external libzmq;
 
 {******************************************************************************}
 {*  0MQ errors.                                                               *}
@@ -145,7 +144,7 @@ type
     vsm_size: Byte;
     vsm_data: Array[0..ZMQ_MAX_VSM_SIZE-1] of Byte;
   end;
-  
+
 {$endif}
 
   free_fn = procedure(data, hint: Pointer);
@@ -320,8 +319,14 @@ function zmq_connect(s: Pointer; addr: PAnsiChar): Integer; cdecl; external libz
 function zmq_unbind(s: Pointer; addr: PAnsiChar): Integer; cdecl; external libzmq;
 function zmq_disconnect(s: Pointer; addr: PAnsiChar): Integer; cdecl; external libzmq;
 {$endif}
+
+{$ifdef zmq3}
+function zmq_send (s: Pointer; buf: Pointer; len: Integer; flags: Integer): Integer; cdecl; external libzmq;
+function zmq_recv (s: Pointer; buf: Pointer; len: Integer; flags: Integer): Integer; cdecl; external libzmq;
+{$else}
 function zmq_send (s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;
 function zmq_recv (s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;
+{$endif}
 
 {$ifdef zmq3}
 function zmq_sendmsg(s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;

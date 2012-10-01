@@ -15,7 +15,7 @@ var
   s: String;
 begin
   //  Socket to talk to dispatcher
-  receiver := TZMQSocket.Create( lcontext, stRep );
+  receiver := lContext.Socket( stRep );
   receiver.connect( 'inproc://workers' );
 
   while True do
@@ -37,14 +37,14 @@ var
   i: Integer;
   tid: Cardinal;
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Socket to talk to clients
-  clients := TZMQSocket.Create( context, stRouter );
+  clients := Context.Socket( stRouter );
   clients.bind( 'tcp://*:5555' );
 
   //  Socket to talk to workers
-  workers := TZMQSocket.Create( context, stDealer );
+  workers := Context.Socket( stDealer );
   workers.bind( 'inproc://workers' );
 
   //  Launch pool of worker threads

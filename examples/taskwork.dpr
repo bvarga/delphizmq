@@ -19,14 +19,14 @@ var
   sender: TZMQSocket;
   s: String;
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Socket to receive messages on
-  receiver := TZMQSocket.Create( context, stPull );
+  receiver := Context.Socket( stPull );
   receiver.connect( 'tcp://localhost:5557' );
 
   //  Socket to send messages to
-  sender := TZMQSocket.Create( context, stPush );
+  sender := Context.Socket( stPush );
   sender.connect( 'tcp://localhost:5558' );
 
   //  Process tasks forever

@@ -22,9 +22,9 @@ var
 
 begin
   //  Prepare our context and sockets
-  context := TZMQContext.Create( 1 );
-  frontend := TZMQSocket.Create( context, stRouter );
-  backend := TZMQSocket.Create( context, stDealer );
+  context := TZMQContext.Create;
+  frontend := Context.Socket( stRouter );
+  backend := Context.Socket( stDealer );
   frontend.bind( 'tcp://*:5559' );
   backend.bind( 'tcp://*:5560' );
 

@@ -16,10 +16,10 @@ var
   str: String;
   i: Integer;
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  First, connect our subscriber socket
-  subscriber := TZMQSocket.Create( context, stSub );
+  subscriber := Context.Socket( stSub );
   subscriber.connect( 'tcp://localhost:5561' );
   subscriber.Subscribe( '' );
 
@@ -27,7 +27,7 @@ begin
   sleep (1);
 
   //  Second, synchronize with publisher
-  syncclient := TZMQSocket.Create( context, stReq );
+  syncclient := Context.Socket( stReq );
   syncclient.connect( 'tcp://localhost:5562' );
 
   //  - send a synchronization request

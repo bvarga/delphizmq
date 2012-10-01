@@ -23,14 +23,14 @@ var
   workload: Integer;
 
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Socket to send messages on
-  sender := TZMQSocket.Create( context, stPush );
+  sender := Context.Socket( stPush );
   sender.bind( 'tcp://*:5557' );
 
   //  Socket to send start of batch message on
-  sink := TZMQSocket.Create( context, stPush );
+  sink := Context.Socket( stPush );
   sink.connect( 'tcp://localhost:5558' );
 
   Write( 'Press Enter when the workers are ready: ' );

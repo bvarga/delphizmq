@@ -19,14 +19,14 @@ var
   update: TZMQMessage;
 begin
   //  Prepare our context and sockets
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Connect to task ventilator
-  receiver := TZMQSocket.Create( context, stPull );
+  receiver := Context.Socket( stPull );
   receiver.connect( 'tcp://localhost:5557' );
 
   //  Connect to weather server
-  subscriber := TZMQSocket.Create( context, stSub );
+  subscriber := Context.Socket( stSub );
   subscriber.connect( 'tcp://localhost:5556' );
   subscriber.subscribe( '10001' );
 

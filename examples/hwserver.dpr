@@ -8,6 +8,7 @@ program hwserver;
 
 {$APPTYPE CONSOLE}
 
+{$I zmq.inc}
 uses
     SysUtils
   , Windows
@@ -32,7 +33,11 @@ begin
   begin
     //  Wait for next request from client
     zmq_msg_init( request );
+    {$ifdef zmq3}
+    zmq_recvmsg( responder, request, 0 );
+    {$else}
     zmq_recv( responder, request, 0 );
+    {$endif}
     Writeln( 'Received Hello' );
     zmq_msg_close( request );
 
@@ -43,7 +48,11 @@ begin
     zmq_msg_init( reply );
     zmq_msg_init_size( reply, 5 );
     CopyMemory( zmq_msg_data( reply ), @'World'[1], 5 );
+    {$ifdef zmq3}
+    zmq_sendmsg( responder, reply, 0 );
+    {$else}
     zmq_send( responder, reply, 0 );
+    {$endif}
     zmq_msg_close( reply );
 
   end;

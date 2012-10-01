@@ -5,12 +5,12 @@
 			<Option Name="Personality">Delphi.Personality</Option>
 			<Option Name="ProjectType"></Option>
 			<Option Name="Version">1.0</Option>
-			<Option Name="GUID">{E46205DF-BD05-4DCC-9B86-765744D54C31}</Option>
+			<Option Name="GUID">{36CA62EC-37AE-4FC0-9DB9-561ED6ED9675}</Option>
 		</Option>
 	</PersonalityInfo>
 	<Delphi.Personality>
 		<Source>
-			<Source Name="MainSource">benchmark_client.dpr</Source>
+			<Source Name="MainSource">tests.dpr</Source>
 		</Source>
 		<FileVersion>
 			<FileVersion Name="Version">7.0</FileVersion>
@@ -120,12 +120,12 @@
 		</Linker>
 		<Directories>
 			<Directories Name="OutputDir">..\bin</Directories>
-			<Directories Name="UnitOutputDir"></Directories>
+			<Directories Name="UnitOutputDir">..\dcu</Directories>
 			<Directories Name="PackageDLLOutputDir"></Directories>
 			<Directories Name="PackageDCPOutputDir"></Directories>
-			<Directories Name="SearchPath">..\</Directories>
+			<Directories Name="SearchPath">;$(BDS)\Source\DUnit\src;..\</Directories>
 			<Directories Name="Packages"></Directories>
-			<Directories Name="Conditionals"></Directories>
+			<Directories Name="Conditionals">CONSOLE_TESTRUNNER</Directories>
 			<Directories Name="DebugSourceDirs"></Directories>
 			<Directories Name="UsePackages">False</Directories>
 		</Directories>
@@ -172,6 +172,10 @@
 			<VersionInfoKeys Name="Comments"></VersionInfoKeys>
 		</VersionInfoKeys>
 	</Delphi.Personality>
+	<UnitTesting>
+		<TestFramework>DUnit / Delphi Win32</TestFramework>
+		<TestRunner>Console</TestRunner>
+	</UnitTesting>
 	<StarTeamAssociation></StarTeamAssociation>
 	<StarTeamNonRelativeFiles></StarTeamNonRelativeFiles>
 </BorlandProject>

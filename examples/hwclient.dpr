@@ -17,11 +17,11 @@ var
   i: Integer;
   sMsg: String;
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Socket to talk to server
   Writeln('Connecting to hello world server...');
-  requester := TZMQSocket.Create( context, stReq );
+  requester := Context.Socket( stReq );
   requester.connect( 'tcp://localhost:5555' );
 
   for i := 0 to 9 do

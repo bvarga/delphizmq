@@ -38,8 +38,8 @@ begin
   Windows.SetConsoleCtrlHandler( @console_handler, True );
 
 
-  context := TZMQContext.Create( 1 );
-  socket := TZMQSocket.Create( context, stRep );
+  context := TZMQContext.Create;
+  socket := Context.Socket( stRep );
   socket.bind( 'tcp://*:5555' );
 
   while True do

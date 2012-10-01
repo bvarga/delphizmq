@@ -20,8 +20,8 @@ var
   relhumidity: Integer;
 begin
   //  Prepare our context and publisher
-  context := TZMQContext.create( 1 );
-  publisher := TZMQSocket.Create( context, stPub );
+  context := TZMQContext.create;
+  publisher := Context.Socket( stPub );
   publisher.bind( 'tcp://*:5556' );
 //  publisher.bind( 'ipc://weather.ipc' );
 

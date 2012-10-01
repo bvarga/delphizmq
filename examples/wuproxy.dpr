@@ -16,14 +16,14 @@ var
   msg: TZMQMessage;
   more: Boolean;
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  This is where the weather server sits
-  frontend := TZMQSocket.Create( context, stSub );
+  frontend := Context.Socket( stSub );
   frontend.connect( 'tcp://192.168.55.210:5556' );
 
   //  This is our public endpoint for subscribers
-  backend := TZMQSocket.Create( context, stPub );
+  backend := Context.Socket( stPub );
   backend.bind( 'tcp://10.1.1.0:8100' );
 
   //  Subscribe on everything

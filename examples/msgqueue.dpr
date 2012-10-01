@@ -16,14 +16,14 @@ var
   backend: TZMQSocket;
 
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Socket facing clients
-  frontend := TZMQSocket.Create( context, stRouter );
+  frontend := Context.Socket( stRouter );
   frontend.bind( 'tcp://*:5559' );
 
   //  Socket facing services
-  backend := TZMQSocket.Create( context, stDealer );
+  backend := Context.Socket( stDealer );
   backend.bind( 'tcp://*:5560' );
 
   //  Start built-in device

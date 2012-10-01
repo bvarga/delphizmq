@@ -26,11 +26,11 @@ var
   s: String;
   tsl: TStringList;
 begin
-  context := TZMQContext.Create( 1 );
+  context := TZMQContext.Create;
 
   //  Socket to talk to server
   Writeln ( 'Collecting updates from weather server' );
-  subscriber := TZMQSocket.Create( context, stSub );
+  subscriber := Context.Socket( stSub );
   subscriber.connect( 'tcp://localhost:5556' );
 
   filter := '10001';

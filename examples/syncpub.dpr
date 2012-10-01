@@ -21,14 +21,14 @@ var
   i: Integer;
 begin
   //  We wait for 10 subscribers
-  context := TZMQContext.create( 1 );
+  context := TZMQContext.create;
 
   //  Socket to talk to clients
-  publisher := TZMQSocket.Create( context, stPub );
+  publisher := Context.Socket( stPub );
   publisher.bind( 'tcp://*:5561' );
 
   //  Socket to receive signals
-  syncservice := TZMQSocket.Create( context, stRep );
+  syncservice := Context.Socket( stRep );
   syncservice.bind( 'tcp://*:5562' );
 
   //  Get synchronization from subscribers

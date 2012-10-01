@@ -9,7 +9,7 @@ General
 
 The package contains a wrapper (zmq.pas) for the dll, and a higher level api (zmqapi.pas). 
 It should work with ZMQ 2.2.0, and with 3.2.0 rc1 (experimental). To use the v3.2 dll, in
-´´´zmq.inc´´´ define zmq3 (´´´($define zmq3}´´´). The dll's come from the 
+zmq.inc define zmq3 (($define zmq3}). The dll's come from the 
 [official distro](http://www.zeromq.org/intro:get-the-software) 
 
 Usage
@@ -19,12 +19,12 @@ You should use the higher level api, which'll save you a lot of time, and incide
 the code'll be easier to read.
 
 First, you need to create a context
-    context := TZMQContext.Create(1); 
-if you use v3.2 than it's just 
-    // context := TZMQContext.Create;
+
+    context := TZMQContext.Create; 
     
 There are various socket types, see the [Guide](http://zguide.zeromq.org), each has a 
-constant, so to create a REP socket, you should just write this:
+constant. To create for example a REP socket, just write this:
+
     socket := context.Socket( stRep );
     
     // binding the socket

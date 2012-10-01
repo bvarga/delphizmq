@@ -369,6 +369,19 @@ const
 
 function zmq_device(device: Integer; insocket,outsocket: Pointer): Integer; cdecl; external libzmq;
 
+{*  Helper functions are used by perf tests so that they don't have to care   *}
+{*  about minutiae of time-related functions on different OS platforms.       *}
+
+{*  Starts the stopwatch. Returns the handle to the watch.                    *}
+function zmq_stopwatch: Pointer; stdcall; external libzmq;
+
+{*  Stops the stopwatch. Returns the number of microseconds elapsed since     *}
+{*  the stopwatch was started.                                                *}
+function zmq_stopwatch_stop( watch: Pointer ): LongWord; stdcall; external libzmq;
+
+{*  Sleeps for specified number of seconds.                                   *}
+procedure zmq_sleep( seconds: Integer ); stdcall; external libzmq;
+
 implementation
 
 end.

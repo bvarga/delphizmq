@@ -40,10 +40,24 @@ type
   end;
 
   TZMQContext = class;
+  TZMQSocket = class;
+
+  TZMQSendFlag = ( {$ifdef zmq3}sfDontWait{$else}sfNoBlock{$endif}, sfSndMore );
+  TZMQSendFlags = set of TZMQSendFlag;
+
+  TZMQRecvFlag = ( {$ifdef zmq3}rfDontWait{$else}rfNoBlock{$endif} );
+  TZMQRecvFlags = set of TZMQRecvFlag;
+
+  TZMQMessageProperty = ( mpMore );
 
   TZMQMessage = class
   private
     fMessage: zmq_msg_t;
+    procedure CheckResult( rc: Integer );
+    {$ifdef zmq3}
+    function getProperty( prop: TZMQMessageProperty ): Integer;
+    procedure setProperty( prop: TZMQMessageProperty; value: Integer );
+    {$endif}
   public
     constructor create; overload;
     constructor create( size: size_t ); overload;
@@ -56,17 +70,17 @@ type
     procedure copy( msg: TZMQMessage );
     function data: Pointer;
     function size: size_t;
+    {$ifdef zmq3}
+    function more: Boolean;
+    function send( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
+    function recv( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
+    {$endif}
   end;
 
 
   TZMQSocketType = ( stPair, stPub, stSub, stReq, stRep, stDealer,
     stRouter, stPull, stPush, stXPub, stXSub );
 
-  TZMQSendFlag = ( {$ifdef zmq3}sfDontWait{$else}sfNoBlock{$endif}, sfSndMore );
-  TZMQSendFlags = set of TZMQSendFlag;
-
-  TZMQRecvFlag = ( {$ifdef zmq3}rfDontWait{$else}rfNoBlock{$endif} );
-  TZMQRecvFlags = set of TZMQRecvFlag;
 
   TZMQPollEvent = ( pePollIn, pePollOut, pePollErr );
   TZMQPollEvents = set of TZMQPollEvent;
@@ -77,6 +91,7 @@ type
     fSocket: Pointer;
     fContext: TZMQContext;
   private
+    function getTerminated: Boolean;
     procedure close;
     procedure setSockOpt( option: Integer; optval: Pointer; optvallen: size_t );
     procedure getSockOpt( option: Integer; optval: Pointer; var optvallen: size_t );
@@ -199,6 +214,7 @@ type
     property Events: TZMQPollEvents read getEvents;
 
     property SocketPtr: Pointer read fSocket;
+    property Terminated: Boolean read getTerminated;
   end;
 
   TZMQContext = class
@@ -279,64 +295,65 @@ end;
 
 constructor TZMQMessage.Create;
 begin
-  if zmq_msg_init( fMessage ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_init( fMessage ) );
 end;
 
 constructor TZMQMessage.Create( size: size_t );
 begin
-  if zmq_msg_init_size( fMessage, size ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_init_size( fMessage, size ) );
 end;
 
 constructor TZMQMessage.Create( data: Pointer; size: size_t;
   ffn: free_fn; hint: Pointer );
 begin
-  if zmq_msg_init_data( fMessage, data, size, ffn, hint ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_init_data( fMessage, data, size, ffn, hint ) );
 end;
 
 destructor TZMQMessage.Destroy;
 begin
-  if zmq_msg_close( fMessage ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_close( fMessage ) );
   inherited;
+end;
+
+procedure TZMQMessage.CheckResult( rc: Integer );
+begin
+  if rc = 0 then
+  begin
+  // ok
+  end else
+  if rc = -1 then
+  begin
+    raise EZMQException.Create;
+  end else
+    raise EZMQException.Create('Function result is not 0, or -1!');
 end;
 
 procedure TZMQMessage.rebuild;
 begin
-  if zmq_msg_close( fMessage ) <> 0 then
-    raise EZMQException.Create;
-  if zmq_msg_init( fMessage ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_close( fMessage ) );
+  CheckResult( zmq_msg_init( fMessage ) );
 end;
 
 procedure TZMQMessage.rebuild( size: size_t );
 begin
-  if zmq_msg_close( fMessage ) <> 0 then
-    raise EZMQException.Create;
-  if zmq_msg_init_size( fMessage, size ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_close( fMessage ) );
+  CheckResult( zmq_msg_init_size( fMessage, size ) );
 end;
 
 procedure TZMQMessage.rebuild( data: Pointer; size: size_t; ffn: free_fn; hint: Pointer = nil );
 begin
-  if zmq_msg_close( fMessage ) <> 0 then
-    raise EZMQException.Create;
-  if zmq_msg_init_data( fMessage, data, size, ffn, hint ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_close( fMessage ) );
+  CheckResult( zmq_msg_init_data( fMessage, data, size, ffn, hint ) );
 end;
 
 procedure TZMQMessage.move( msg: TZMQMessage );
 begin
-  if zmq_msg_move( fMessage, msg.fMessage ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_msg_move( fMessage, msg.fMessage ) );
 end;
 
 procedure TZMQMessage.copy( msg: TZMQMessage );
 begin
-  if zmq_msg_copy( fMessage, msg.fMessage ) <> 0 then
-    Raise EZMQException.Create;
+  CheckResult( zmq_msg_copy( fMessage, msg.fMessage ) );
 end;
 
 function TZMQMessage.data: Pointer;
@@ -348,6 +365,75 @@ function TZMQMessage.size: size_t;
 begin
  result := zmq_msg_size( fMessage );
 end;
+
+{$ifdef zmq3}
+function TZMQMessage.getProperty( prop: TZMQMessageProperty ): Integer;
+begin
+  result := zmq_msg_get( fMessage, Byte( prop ) );
+  if result = -1 then
+    raise EZMQException.Create
+  else
+    raise EZMQException.Create( 'zmq_msg_more return value undefined!' );
+end;
+
+procedure TZMQMessage.setProperty( prop: TZMQMessageProperty; value: Integer );
+begin
+  CheckResult( zmq_msg_set( fMessage, Byte( prop ), value ) );
+end;
+
+function TZMQMessage.more: Boolean;
+var
+  rc: Integer;
+begin
+  rc := zmq_msg_more( fMessage );
+  if rc = 0 then
+    result := false else
+  if rc = 1 then
+    result := true else
+    raise EZMQException.Create( 'zmq_msg_more return value undefined!' );
+end;
+
+function TZMQMessage.send( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
+begin
+  result := zmq_msg_send( fMessage, socket.SocketPtr, Byte( flags ) );
+
+  if result < -1 then
+    raise EZMQException.Create('zmq_msg_send return value less than -1.')
+  else if result = -1 then
+  begin
+    if zmq_errno = ETERM then
+      socket.close;
+    raise EZMQException.Create;
+  end else
+  begin
+    {$ifdef debug}
+    if result <> size then
+      raise EZMQException.Create('return value of zmq_msg_send and msg size is not equal.');
+    {$endif}
+  end;
+
+end;
+
+function TZMQMessage.recv( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
+begin
+  rebuild;
+  result := zmq_msg_recv( fMessage, socket.SocketPtr, Byte( flags ) );
+  if result < -1 then
+    raise EZMQException.Create('zmq_msg_recv return value less than -1.')
+  else if result = -1 then
+  begin
+    if zmq_errno = ETERM then
+      socket.close;
+    raise EZMQException.Create;
+  end else
+  begin
+    {$ifdef debug}
+    if result <> size then
+      raise EZMQException.Create('return value of zmq_msg_recv and msg size is not equal.');
+    {$endif}
+  end;
+end;
+{$endif}
 
 { TZMQSocket }
 
@@ -493,6 +579,7 @@ function TZMQSocket.getSwap: Int64;
 begin
   result := getSockOptInt64( ZMQ_SWAP );
 end;
+
 {$endif}
 
 function TZMQSocket.getAffinity: Int64; // should be uInt64
@@ -900,6 +987,11 @@ begin
     inc( result );
     bRcvMore := RcvMore;
   end;
+end;
+
+function TZMQSocket.getTerminated: Boolean;
+begin
+  result := SocketPtr = nil;
 end;
 
 { TZMQContext }

@@ -185,7 +185,7 @@ type
     {$ifdef zmq3}
     function recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
     {$endif}
-    
+
     property SocketType: TZMQSocketType read getSocketType;
     property RcvMore: Boolean read getRcvMore;
     {$ifndef zmq3}
@@ -222,8 +222,10 @@ type
     fContext: Pointer;
     fSockets: TList;
     cs: TRTLCriticalSection;
-  private
+
     procedure RemoveSocket( lSocket: TZMQSocket );
+  protected
+    procedure CheckResult( rc: Integer );
   public
     constructor create{$ifndef zmq3}( io_threads: Integer = 1 ){$endif};
     destructor Destroy; override;
@@ -448,8 +450,7 @@ procedure TZMQSocket.close;
 begin
   if SocketPtr = nil then
     exit;
-  if zmq_close( SocketPtr ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_close( SocketPtr ) );
   fSocket := nil;
 end;
 
@@ -1012,12 +1013,10 @@ end;
 destructor TZMQContext.destroy;
 begin
   {$ifdef zmq3}
-  if zmq_ctx_destroy( fContext ) <> 0 then
+  CheckResult( zmq_ctx_destroy( fContext ) );
   {$else}
-  if zmq_term( fContext ) <> 0 then
+  CheckResult( zmq_term( fContext ) );
   {$endif}
-    raise EZMQException.Create;
-
   while fSockets.Count > 0 do
     TZMQSocket(fSockets[0]).Free;
 
@@ -1025,18 +1024,29 @@ begin
   inherited;
 end;
 
+procedure TZMQContext.CheckResult( rc: Integer );
+begin
+  if rc = 0 then
+  begin
+  // ok
+  end else
+  if rc = -1 then
+  begin
+    raise EZMQException.Create;
+  end else
+    raise EZMQException.Create('Function result is not 0, or -1!');
+end;
+
 {$ifdef zmq3}
 function TZMQContext.get( option: Integer ): Integer;
 begin
   result := zmq_ctx_get( fContext, option );
-  if result < 0 then
-    raise EZMQException.Create;
+  CheckResult( result );
 end;
 
 procedure TZMQContext._set( option, optval: Integer );
 begin
-  if zmq_ctx_set( fContext, option, optval ) <> 0 then
-    raise EZMQException.Create;
+  CheckResult( zmq_ctx_set( fContext, option, optval ) );
 end;
 {$endif}
 

@@ -19,7 +19,8 @@ uses
   TestFramework,
   GUITestRunner,
   TextTestRunner,
-  simpleTestCase in 'simpleTestCase.pas';
+  SocketTestCase in 'SocketTestCase.pas',
+  ContextTestCase in 'ContextTestCase.pas';
 
 {$R *.RES}
 

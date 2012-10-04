@@ -156,11 +156,6 @@ function zmq_msg_init_size( var msg: zmq_msg_t; size: size_t ): Integer; cdecl; 
 function zmq_msg_init_data( var msg: zmq_msg_t; data: Pointer; size: size_t;
   ffn: free_fn; hint: Pointer ): Integer; cdecl; external libzmq;
 
-{$ifdef zmq3}
-function zmq_msg_send (var msg: zmq_msg_t; s: Pointer; flags: Integer): Integer; cdecl; external libzmq;
-function zmq_msg_recv (var msg: zmq_msg_t; s: Pointer; flags: Integer): Integer; cdecl; external libzmq;
-{$endif}
-
 function zmq_msg_close(var msg: zmq_msg_t): Integer; cdecl; external libzmq;
 function zmq_msg_move(dest, src: zmq_msg_t): Integer; cdecl; external libzmq;
 function zmq_msg_copy(dest, src: zmq_msg_t): Integer; cdecl; external libzmq;
@@ -171,7 +166,8 @@ function zmq_msg_size(var msg: zmq_msg_t): size_t; cdecl; external libzmq;
 function zmq_msg_more (var msg: zmq_msg_t): Integer; cdecl; external libzmq;
 function zmq_msg_get (var msg: zmq_msg_t; option: Integer): Integer; cdecl; external libzmq;
 function zmq_msg_set (var msg: zmq_msg_t; option: Integer; optval: Integer): Integer; cdecl; external libzmq;
-
+function zmq_msg_send (var msg: zmq_msg_t; s: Pointer; flags: Integer): Integer; cdecl; external libzmq;
+function zmq_msg_recv (var msg: zmq_msg_t; s: Pointer; flags: Integer): Integer; cdecl; external libzmq;
 {$endif}
 {******************************************************************************}
 {*  0MQ socket definition.                                                    *}

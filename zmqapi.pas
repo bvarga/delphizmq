@@ -216,28 +216,37 @@ type
     property SocketPtr: Pointer read fSocket;
     property Terminated: Boolean read getTerminated;
   end;
+  {$ifdef zmq3}
+  TZMQMonitorProc = zmq_monitor_fn;
+  {$endif}
 
   TZMQContext = class
   private
     fContext: Pointer;
     fSockets: TList;
     cs: TRTLCriticalSection;
-
-    procedure RemoveSocket( lSocket: TZMQSocket );
+    {$ifdef zmq3}
+    function getOption( option: Integer ): Integer;
+    procedure setOption( option, optval: Integer );
+    function getIOThreads: Integer;
+    procedure setIOThreads( const Value: Integer );
+    function getMaxSockets: Integer;
+    procedure setMaxSockets( const Value: Integer );
+    {$endif}
   protected
     procedure CheckResult( rc: Integer );
+    procedure RemoveSocket( lSocket: TZMQSocket );
   public
     constructor create{$ifndef zmq3}( io_threads: Integer = 1 ){$endif};
     destructor Destroy; override;
-
-    {$ifdef zmq3}
-    function get( option: Integer ): Integer;
-    procedure _set( option, optval: Integer );
-    //procedure set_monitor
-    {$endif}
-
     function Socket( stype: TZMQSocketType ): TZMQSocket;
     property ContextPtr: Pointer read fContext;
+
+    {$ifdef zmq3}
+    procedure RegisterMonitor( proc: TZMQMonitorProc );
+    property IOThreads: Integer read getIOThreads write setIOThreads;
+    property MaxSockets: Integer read getMaxSockets write setMaxSockets;
+    {$endif}
   end;
 
 type
@@ -1004,7 +1013,7 @@ begin
   {$else}
   fContext := zmq_init( io_threads );
   {$endif}
-  if fContext = nil then
+  if ContextPtr = nil then
     raise EZMQException.Create;
   InitializeCriticalSection( cs );
   fSockets := TList.Create;
@@ -1013,9 +1022,9 @@ end;
 destructor TZMQContext.destroy;
 begin
   {$ifdef zmq3}
-  CheckResult( zmq_ctx_destroy( fContext ) );
+  CheckResult( zmq_ctx_destroy( ContextPtr ) );
   {$else}
-  CheckResult( zmq_term( fContext ) );
+  CheckResult( zmq_term( ContextPtr ) );
   {$endif}
   while fSockets.Count > 0 do
     TZMQSocket(fSockets[0]).Free;
@@ -1038,16 +1047,45 @@ begin
 end;
 
 {$ifdef zmq3}
-function TZMQContext.get( option: Integer ): Integer;
+function TZMQContext.getOption( option: Integer ): Integer;
 begin
-  result := zmq_ctx_get( fContext, option );
-  CheckResult( result );
+  result := zmq_ctx_get( ContextPtr, option );
+  if result = -1 then
+    raise EZMQException.Create
+  else if result < -1 then
+    raise EZMQException.Create('Function result is less than -1!');
 end;
 
-procedure TZMQContext._set( option, optval: Integer );
+procedure TZMQContext.setOption( option, optval: Integer );
 begin
-  CheckResult( zmq_ctx_set( fContext, option, optval ) );
+  CheckResult( zmq_ctx_set( ContextPtr, option, optval ) );
 end;
+
+procedure TZMQContext.RegisterMonitor( proc: TZMQMonitorProc );
+begin
+  CheckResult( zmq_ctx_set_monitor( ContextPtr, proc ) );
+end;
+
+function TZMQContext.getIOThreads: Integer;
+begin
+  result := getOption( ZMQ_IO_THREADS );
+end;
+
+procedure TZMQContext.setIOThreads( const Value: Integer );
+begin
+  setOption( ZMQ_IO_THREADS, Value );
+end;
+
+function TZMQContext.getMaxSockets: Integer;
+begin
+  result := getOption( ZMQ_MAX_SOCKETS );
+end;
+
+procedure TZMQContext.setMaxSockets( const Value: Integer );
+begin
+  setOption( ZMQ_MAX_SOCKETS, Value );
+end;
+
 {$endif}
 
 function TZMQContext.Socket( stype: TZMQSocketType ): TZMQSocket;

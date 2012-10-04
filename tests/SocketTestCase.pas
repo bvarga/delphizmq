@@ -1,4 +1,4 @@
-unit simpleTestCase;
+unit SocketTestCase;
 
 interface
 

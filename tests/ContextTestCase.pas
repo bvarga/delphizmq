@@ -21,9 +21,11 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    {$ifdef zmq3}
     procedure ContextDefaults;
     procedure SetIOThreads;
     procedure SetMaxSockets;
+    {$endif}
   end;
 
 implementation
@@ -46,6 +48,7 @@ begin
     context.Free;
 end;
 
+{$ifdef zmq3}
 procedure TContextTestCase.ContextDefaults;
 begin
   CheckEquals( ZMQ_IO_THREADS_DFLT, context.IOThreads );
@@ -67,6 +70,7 @@ begin
   context.MaxSockets := 16;
   CheckEquals( 16, context.MaxSockets );
 end;
+{$endif}
 
 initialization
   RegisterTest(TContextTestCase.Suite);

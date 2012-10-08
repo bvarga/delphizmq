@@ -29,6 +29,9 @@ uses
   , zmq
   ;
 
+const 
+  ZMQEAGAIN = 11;
+  
 type
   EZMQException = class( Exception )
   private

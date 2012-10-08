@@ -544,7 +544,7 @@ var
   optvallen: Cardinal;
 begin
   optvallen := SizeOf( Value );
-  getSockOpt( option, @Value, optvallen );
+  setSockOpt( option, @Value, optvallen );
 end;
 
 function TZMQSocket.getSocketType: TZMQSocketType;

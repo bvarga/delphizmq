@@ -14,55 +14,519 @@ uses
 
 type
 
-  TSimpleTestCase = class(TTestCase)
+  TSocketTestCase = class(TTestCase)
   strict private
     context: TZMQContext;
+    FZMQSocket: TZMQSocket;
+
   public
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    procedure TestSocketType;
+    procedure TestrcvMore;
+    {$ifdef zmq3}
+    procedure TestSndHWM;
+    procedure TestRcvHWM;
+    {$else}
+    procedure TestHWM;
+    procedure TestSwap;
+    procedure TestRecoveryIvlMSec;
+    procedure TestMCastLoop;
+    {$endif}
+    procedure TestRcvTimeout;
+    procedure TestSndTimeout;
+    procedure TestAffinity;
+    procedure TestIdentity;
+    procedure TestRate;
+    procedure TestRecoveryIvl;
+    procedure TestSndBuf;
+    procedure TestRcvBuf;
+    procedure TestLinger;
+    procedure TestReconnectIvl;
+    procedure TestReconnectIvlMax;
+    procedure TestBacklog;
+    procedure TestFD;
+    procedure TestEvents;
+
+
+    procedure TestSubscribe;
+    procedure TestunSubscribe;
+
     procedure SocketPair;
+
   end;
 
 implementation
 
+uses
+  Sysutils
+  ;
+
 { TSimpleTestCase }
 
-procedure TSimpleTestCase.SetUp;
+procedure TSocketTestCase.SetUp;
 begin
   inherited;
   context := TZMQContext.Create;
 end;
 
-procedure TSimpleTestCase.TearDown;
+procedure TSocketTestCase.TearDown;
 begin
   inherited;
   if context <> nil then
     context.Free;
 end;
 
-procedure TSimpleTestCase.SocketPair;
+procedure TSocketTestCase.TestSocketType;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      Check( FZMQSocket.SocketType = st, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestrcvMore;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( False, FZMQSocket.rcvMore, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+{$ifdef zmq3}
+procedure TSocketTestCase.TestSndHWM;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 1000, FZMQSocket.SndHWM, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.SndHWM := 42;
+      CheckEquals( 42, FZMQSocket.SndHWM );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestRcvHWM;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 1000, FZMQSocket.RcvHWM, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.RcvHWM := 42;
+      CheckEquals( 42, FZMQSocket.RcvHWM );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+{$else}
+procedure TSocketTestCase.TestHWM;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 0, FZMQSocket.HWM, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.HWM := 42;
+      CheckEquals( 42, FZMQSocket.HWM );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestSwap;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 0, FZMQSocket.Swap, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.Swap := 1024;
+      CheckEquals( 1024, FZMQSocket.Swap );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestRecoveryIvlMSec;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( -1, FZMQSocket.RecoveryIvlMSec, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.RecoveryIvlMSec := 1024;
+      CheckEquals( 1024, FZMQSocket.RecoveryIvlMSec );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestMCastLoop;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 1, FZMQSocket.MCastLoop, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.MCastLoop := 0;
+      CheckEquals( 0, FZMQSocket.MCastLoop );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+{$endif}
+
+procedure TSocketTestCase.TestRcvTimeout;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( -1, FZMQSocket.RcvTimeout, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.RcvTimeout := 42;
+      CheckEquals( 42, FZMQSocket.RcvTimeout );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestSndTimeout;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( -1, FZMQSocket.SndTimeout, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.SndTimeout := 42;
+      CheckEquals( 42, FZMQSocket.SndTimeout );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+
+procedure TSocketTestCase.TestAffinity;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 0, FZMQSocket.Affinity, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.Affinity :=42;
+      CheckEquals( 42, FZMQSocket.Affinity );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestIdentity;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( '', FZMQSocket.Identity, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.Identity := 'mynewidentity';
+      CheckEquals( 'mynewidentity', FZMQSocket.Identity );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestRate;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 100, FZMQSocket.Rate, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.Rate := 200;
+      CheckEquals( 200, FZMQSocket.Rate );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestRecoveryIvl;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( {$ifdef zmq3}10000{$else}10{$endif}, FZMQSocket.RecoveryIvl, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.RecoveryIvl := 42;
+      CheckEquals( 42, FZMQSocket.RecoveryIvl );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestSndBuf;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 0, FZMQSocket.SndBuf, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.SndBuf := 100000;
+      CheckEquals( 100000, FZMQSocket.SndBuf );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestRcvBuf;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 0, FZMQSocket.RcvBuf, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.RcvBuf := 1024;
+      CheckEquals( 1024, FZMQSocket.RcvBuf );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestLinger;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( -1, FZMQSocket.Linger, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.Linger := 1024;
+      CheckEquals( 1024, FZMQSocket.Linger );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestReconnectIvl;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 100, FZMQSocket.ReconnectIvl, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.ReconnectIvl := 2048;
+      CheckEquals( 2048, FZMQSocket.ReconnectIvl );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestReconnectIvlMax;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 0, FZMQSocket.ReconnectIvlMax, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.ReconnectIvlMax := 42;
+      CheckEquals( 42, FZMQSocket.ReconnectIvlMax );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestBacklog;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( 100, FZMQSocket.Backlog, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.Backlog := 42;
+      CheckEquals( 42, FZMQSocket.Backlog );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestFD;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      Check( Assigned( FZMQSocket.FD ) );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestEvents;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( True, FZMQSocket.Events = [], 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+procedure TSocketTestCase.TestSubscribe;
+var
+  filter: string;
+begin
+{  FZMQSocket := context.Socket( st );
+  try
+  // TODO: Setup method call parameters
+  FZMQSocket.Subscribe(filter);
+  // TODO: Validate method results
+  finally
+    FZMQSocket.Free;
+  end;
+}end;
+
+procedure TSocketTestCase.TestunSubscribe;
+var
+  filter: string;
+begin
+{  FZMQSocket := context.Socket( st );
+  try
+  // TODO: Setup method call parameters
+  FZMQSocket.unSubscribe(filter);
+  // TODO: Validate method results
+  finally
+    FZMQSocket.Free;
+  end;
+}end;
+
+procedure TSocketTestCase.SocketPair;
 var
   socketbind,
   socketconnect: TZMQSocket;
   s: String;
+  tsl: TStringList;
 begin
   socketbind := context.Socket( stPair );
-  socketbind.bind('tcp://127.0.0.1:5560');
+  try
+    socketbind.bind('tcp://127.0.0.1:5560');
 
-  socketconnect := context.Socket( stPair );
-  socketconnect.connect('tcp://127.0.0.1:5560');
+    socketconnect := context.Socket( stPair );
+    try
+      socketconnect.connect('tcp://127.0.0.1:5560');
 
-  socketbind.send('Hello');
-  socketconnect.recv( s );
+      socketbind.send('Hello');
+      socketconnect.recv( s );
+      CheckEquals( 'Hello', s, 'String' );
 
-  CheckEquals( 'Hello', s, 'stPair: Received something else' );
+      socketbind.send(['Hello','World']);
+      tsl := TStringList.Create;
+      try
+        socketconnect.recv( tsl );
+        CheckEquals( 'Hello', tsl[0], 'Multipart 1 message 1' );
+        CheckEquals( 'World', tsl[1], 'Multipart 1 message 2' );
+      finally
+        tsl.Free;
+      end;
 
-  socketconnect.Free;
-  socketbind.Free;
+      tsl := TStringList.Create;
+      try
+        tsl.Add('Hello');
+        tsl.Add('World');
+        socketbind.send( tsl );
+        tsl.Clear;
+        socketconnect.recv( tsl );
+        CheckEquals( 'Hello', tsl[0], 'Multipart 2 message 1' );
+        CheckEquals( 'World', tsl[1], 'Multipart 2 message 2' );
+      finally
+        tsl.Free;
+      end;
+
+
+    finally
+      socketconnect.Free;
+    end;
+  finally
+    socketbind.Free;
+  end;
 end;
 
 initialization
-  RegisterTest(TSimpleTestCase.Suite);
-
+  RegisterTest(TSocketTestCase.Suite);
 end.

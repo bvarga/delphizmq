@@ -33,6 +33,9 @@ const
   ZMQEAGAIN = 11;
   
 type
+
+  UInt64 = Int64;
+
   EZMQException = class( Exception )
   private
     errnum: Integer;
@@ -88,6 +91,10 @@ type
   TZMQPollEvent = ( pePollIn, pePollOut, pePollErr );
   TZMQPollEvents = set of TZMQPollEvent;
 
+  {$ifdef zmq3}
+  TZMQKeepAlive = ( kaDefault, kaFalse, kaTrue );
+  {$endif}
+
   TZMQSocket = class
   // low level
   protected
@@ -120,24 +127,14 @@ type
 
     function getSocketType: TZMQSocketType;
     function getrcvMore: Boolean;
-    {$ifndef zmq3}
-    function getHWM: Int64;
-    {$endif}
     function getRcvTimeout: Integer;
     function getSndTimeout: Integer;
-    {$ifndef zmq3}
-    function getSwap: Int64;
-    {$endif}
-    function getAffinity: Int64;
+    function getAffinity: UInt64;
     function getIdentity: ShortString;
-    function getRate: int64;
-    function getRecoveryIvl: Int64;
-    {$ifndef zmq3}
-    function getRecoveryIvlMSec: Int64;
-    function getMCastLoop: Int64;
-    {$endif}
-    function getSndBuf: Int64;
-    function getRcvBuf: Int64;
+    function getRate: {$ifdef zmq3}Integer{$else}int64{$endif};
+    function getRecoveryIvl: {$ifdef zmq3}Integer{$else}int64{$endif};
+    function getSndBuf: {$ifdef zmq3}Integer{$else}UInt64{$endif};
+    function getRcvBuf: {$ifdef zmq3}Integer{$else}UInt64{$endif};
     function getLinger: Integer;
     function getReconnectIvl: Integer;
     function getReconnectIvlMax: Integer;
@@ -145,24 +142,46 @@ type
     function getFD: Pointer;
     function getEvents: TZMQPollEvents;
 
-    {$ifndef zmq3}
-    procedure setHWM( const Value: Int64 );
-    {$endif}
-    procedure setRcvTimeout( const Value: Integer );
-    procedure setSndTimeout( const Value: Integer );
-    {$ifndef zmq3}
+    {$ifdef zmq3}
+    function getSndHWM: Integer;
+    function getRcvHWM: Integer;
+    procedure setSndHWM( const Value: Integer );
+    procedure setRcvHWM( const Value: Integer );
+    procedure setMaxMsgSize( const Value: Int64 );
+    function getMaxMsgSize: Int64;
+    function getMulticastHops: Integer;
+    procedure setMulticastHops( const Value: Integer );
+    function getIPv4Only: Boolean;
+    procedure setIPv4Only( const Value: Boolean );
+    function getLastEndpoint: String;
+    procedure setLastEndpoint( const Value: String );
+    function getKeepAlive: TZMQKeepAlive;
+    procedure setKeepAlive( const Value: TZMQKeepAlive );
+    function getKeepAliveIdle: Integer;
+    procedure setKeepAliveIdle( const Value: Integer );
+    function getKeepAliveCnt: Integer;
+    procedure setKeepAliveCnt( const Value: Integer );
+    function getKeepAliveIntvl: Integer;
+    procedure setKeepAliveIntvl( const Value: Integer );
+    {$else}
+    function getHWM: UInt64;
+    function getSwap: Int64;
+    function getRecoveryIvlMSec: Int64;
+    function getMCastLoop: Int64;
+    procedure setHWM( const Value: UInt64 );
     procedure setSwap( const Value: Int64 );
-    {$endif}
-    procedure setAffinity( const Value: Int64 );
-    procedure setIdentity( const Value: ShortString );
-    procedure setRate( const Value: int64 );
-    procedure setRecoveryIvl( const Value: Int64 );
-    {$ifndef zmq3}
     procedure setRecoveryIvlMSec( const Value: Int64 );
     procedure setMCastLoop( const Value: Int64 );
     {$endif}
-    procedure setSndBuf( const Value: Int64 );
-    procedure setRcvBuf( const Value: Int64 );
+
+    procedure setRcvTimeout( const Value: Integer );
+    procedure setSndTimeout( const Value: Integer );
+    procedure setAffinity( const Value: UInt64 );
+    procedure setIdentity( const Value: ShortString );
+    procedure setRate( const Value: {$ifdef zmq3}Integer{$else}int64{$endif} );
+    procedure setRecoveryIvl( const Value: {$ifdef zmq3}Integer{$else}int64{$endif} );
+    procedure setSndBuf( const Value: {$ifdef zmq3}Integer{$else}UInt64{$endif} );
+    procedure setRcvBuf( const Value: {$ifdef zmq3}Integer{$else}UInt64{$endif} );
     procedure setLinger( const Value: Integer );
     procedure setReconnectIvl( const Value: Integer );
     procedure setReconnectIvlMax( const Value: Integer );
@@ -185,30 +204,43 @@ type
     function recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( var msg: String; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer; overload;
+
     {$ifdef zmq3}
     function recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
     {$endif}
 
     property SocketType: TZMQSocketType read getSocketType;
     property RcvMore: Boolean read getRcvMore;
-    {$ifndef zmq3}
-    property HWM: Int64 read getHWM write setHWM; // should be uInt64
-    {$endif}
-    property RcvTimeout: Integer read getRcvTimeout write setRcvTimeout;
-    property SndTimeout: Integer read getSndTimeout write setSndTimeout;
-    {$ifndef zmq3}
+
+    {$ifdef zmq3}
+    property SndHWM: Integer read getSndHWM write setSndHwm;
+    property RcvHWM: Integer read getRcvHWM write setRcvHwm;
+    property MaxMsgSize: Int64 read getMaxMsgSize write setMaxMsgSize;
+
+    property MulticastHops: Integer read getMulticastHops write setMulticastHops;
+    property IPv4Only: Boolean read getIPv4Only write setIPv4Only;
+    property LastEndpoint: String read getLastEndpoint write setLastEndpoint;
+    property KeepAlive: TZMQKeepAlive read getKeepAlive write setKeepAlive;
+    property KeepAliveIdle: Integer read getKeepAliveIdle write setKeepAliveIdle;
+    property KeepAliveCnt: Integer read getKeepAliveCnt write setKeepAliveCnt;
+    property KeepAliveIntvl: Integer read getKeepAliveIntvl write setKeepAliveIntvl;
+
+
+
+    {$else}
+    property HWM: UInt64 read getHWM write setHWM;
     property Swap: Int64 read getSwap write setSwap;
-    {$endif}
-    property Affinity: Int64 read getAffinity write setAffinity; // should be uInt64
-    property Identity: ShortString read getIdentity write setIdentity;
-    property Rate: int64 read getRate write setRate;
-    property RecoveryIvl: Int64 read getRecoveryIvl write setRecoveryIvl;
-    {$ifndef zmq3}
     property RecoveryIvlMSec: Int64 read getRecoveryIvlMSec write setRecoveryIvlMSec;
     property MCastLoop: Int64 read getMCastLoop write setMCastLoop;
     {$endif}
-    property SndBuf: Int64 read getSndBuf write setSndBuf; // should be uInt64
-    property RcvBuf: Int64 read getRcvBuf write setRcvBuf; // should be uInt64
+    property RcvTimeout: Integer read getRcvTimeout write setRcvTimeout;
+    property SndTimeout: Integer read getSndTimeout write setSndTimeout;
+    property Affinity: UInt64 read getAffinity write setAffinity;
+    property Identity: ShortString read getIdentity write setIdentity;
+    property Rate: {$ifdef zmq3}Integer{$else}int64{$endif} read getRate write setRate;
+    property RecoveryIvl: {$ifdef zmq3}Integer{$else}int64{$endif} read getRecoveryIvl write setRecoveryIvl;
+    property SndBuf: {$ifdef zmq3}Integer{$else}UInt64{$endif} read getSndBuf write setSndBuf;
+    property RcvBuf: {$ifdef zmq3}Integer{$else}UInt64{$endif} read getRcvBuf write setRcvBuf;
     property Linger: Integer read getLinger write setLinger;
     property ReconnectIvl: Integer read getReconnectIvl write setReconnectIvl;
     property ReconnectIvlMax: Integer read getReconnectIvlMax write setReconnectIvlMax;
@@ -551,31 +583,18 @@ begin
 end;
 
 function TZMQSocket.getSocketType: TZMQSocketType;
-var
-  stype: Integer;
-  optvallen: Cardinal;
 begin
-  optvallen := SizeOf( stype );
-  getSockOpt( ZMQ_TYPE, @stype, optvallen );
-  Result := TZMQSocketType( stype );
+  Result := TZMQSocketType( getSockOptInteger( ZMQ_TYPE ) );
 end;
 
 function TZMQSocket.getRcvMore: Boolean;
-var
-  optvallen: Cardinal;
-  i: Int64;
 begin
-  optvallen := SizeOf( i );
-  getSockOpt( ZMQ_RCVMORE, @i, optvallen );
-  result := i = 1;
+  {$ifdef zmq3}
+  result := getSockOptInteger( ZMQ_RCVMORE ) = 1;
+  {$else}
+  result := getSockOptInt64( ZMQ_RCVMORE ) = 1;
+  {$endif}
 end;
-
-{$ifndef zmq3}
-function TZMQSocket.getHWM: int64;
-begin
-  result := getSockOptInt64( ZMQ_HWM );
-end;
-{$endif}
 
 function TZMQSocket.getRcvTimeout: Integer;
 begin
@@ -587,15 +606,7 @@ begin
   result := getSockOptInteger( ZMQ_SNDTIMEO );
 end;
 
-{$ifndef zmq3}
-function TZMQSocket.getSwap: Int64;
-begin
-  result := getSockOptInt64( ZMQ_SWAP );
-end;
-
-{$endif}
-
-function TZMQSocket.getAffinity: Int64; // should be uInt64
+function TZMQSocket.getAffinity: UInt64;
 begin
   result := getSockOptInt64( ZMQ_AFFINITY );
 end;
@@ -609,36 +620,40 @@ begin
   SetLength( result, optvallen );
 end;
 
-function TZMQSocket.getRate: int64;
+function TZMQSocket.getRate: {$ifdef zmq3}Integer{$else}int64{$endif};
 begin
+  {$ifdef zmq3}
+  result := getSockOptInteger( ZMQ_RATE );
+  {$else}
   result := getSockOptInt64( ZMQ_RATE );
+  {$endif}
 end;
 
-function TZMQSocket.getRecoveryIVL: Int64;
+function TZMQSocket.getRecoveryIVL: {$ifdef zmq3}Integer{$else}int64{$endif};
 begin
+  {$ifdef zmq3}
+  result := getSockOptInteger( ZMQ_RECOVERY_IVL );
+  {$else}
   result := getSockOptInt64( ZMQ_RECOVERY_IVL );
+  {$endif}
 end;
 
-{$ifndef zmq3}
-function TZMQSocket.getRecoveryIVLMSec: Int64;
+function TZMQSocket.getSndBuf: {$ifdef zmq3}Integer{$else}UInt64{$endif};
 begin
-  result := getSockOptInt64( ZMQ_RECOVERY_IVL_MSEC );
-end;
-
-function TZMQSocket.getMCastLoop: Int64;
-begin
-  result := getSockOptInt64( ZMQ_MCAST_LOOP );
-end;
-{$endif}
-
-function TZMQSocket.getSndBuf: Int64;
-begin
+  {$ifdef zmq3}
+  result := getSockOptInteger( ZMQ_SNDBUF );
+  {$else}
   result := getSockOptInt64( ZMQ_SNDBUF );
+  {$endif}
 end;
 
-function TZMQSocket.getRcvBuf: Int64;
+function TZMQSocket.getRcvBuf: {$ifdef zmq3}Integer{$else}UInt64{$endif};
 begin
+  {$ifdef zmq3}
+  result := getSockOptInteger( ZMQ_RCVBUF );
+  {$else}
   result := getSockOptInt64( ZMQ_RCVBUF );
+  {$endif}
 end;
 
 function TZMQSocket.getLinger: Integer;
@@ -680,8 +695,129 @@ begin
   Result := TZMQPollEvents( Byte(i) );
 end;
 
-{$ifndef zmq3}
-procedure TZMQSocket.setHWM( const Value: Int64 );
+{$ifdef zmq3}
+function TZMQSocket.getSndHWM: Integer;
+begin
+  result := getSockOptInteger( ZMQ_SNDHWM );
+end;
+
+function TZMQSocket.getRcvHWM: Integer;
+begin
+  result := getSockOptInteger( ZMQ_RCVHWM );
+end;
+
+procedure TZMQSocket.setSndHWM( const Value: Integer );
+begin
+  setSockOptInteger( ZMQ_SNDHWM, Value );
+end;
+
+procedure TZMQSocket.setRcvHWM( const Value: Integer );
+begin
+  setSockOptInteger( ZMQ_RCVHWM, Value );
+end;
+
+procedure TZMQSocket.setMaxMsgSize( const Value: Int64 );
+begin
+  setSockOptInt64( ZMQ_MAXMSGSIZE, Value );
+end;
+
+function TZMQSocket.getMaxMsgSize: Int64;
+begin
+  result := getSockOptInt64( ZMQ_MAXMSGSIZE );
+end;
+
+function TZMQSocket.getMulticastHops: Integer;
+begin
+  result := getSockOptInteger( ZMQ_MULTICAST_HOPS );
+end;
+
+procedure TZMQSocket.setMulticastHops( const Value: Integer );
+begin
+  setSockOptInteger( ZMQ_MULTICAST_HOPS, Value );
+end;
+
+function TZMQSocket.getIPv4Only: Boolean;
+begin
+  result := getSockOptInteger( ZMQ_IPV4ONLY ) <> 0;
+end;
+
+procedure TZMQSocket.setIPv4Only( const Value: Boolean );
+begin
+  setSockOptInteger( ZMQ_IPV4ONLY, Integer(Value) );
+end;
+
+function TZMQSocket.getLastEndpoint: String;
+begin
+  // todo;
+end;
+
+procedure TZMQSocket.setLastEndpoint( const Value: String );
+begin
+  // todo;
+end;
+
+function TZMQSocket.getKeepAlive: TZMQKeepAlive;
+begin
+  result := TZMQKeepAlive( getSockOptInteger( ZMQ_TCP_KEEPALIVE ) + 1 );
+end;
+
+procedure TZMQSocket.setKeepAlive( const Value: TZMQKeepAlive );
+begin
+  setSockOptInteger( ZMQ_TCP_KEEPALIVE, Byte(Value) - 1 );
+end;
+
+function TZMQSocket.getKeepAliveIdle: Integer;
+begin
+  result := getSockOptInteger( ZMQ_TCP_KEEPALIVE_IDLE );
+end;
+
+procedure TZMQSocket.setKeepAliveIdle( const Value: Integer );
+begin
+  setSockOptInteger( ZMQ_TCP_KEEPALIVE_IDLE, Value );
+end;
+
+function TZMQSocket.getKeepAliveCnt: Integer;
+begin
+  result := getSockOptInteger( ZMQ_TCP_KEEPALIVE_CNT );
+end;
+
+procedure TZMQSocket.setKeepAliveCnt( const Value: Integer );
+begin
+  setSockOptInteger( ZMQ_TCP_KEEPALIVE_CNT, Value );
+end;
+
+function TZMQSocket.getKeepAliveIntvl: Integer;
+begin
+  result := getSockOptInteger( ZMQ_TCP_KEEPALIVE_INTVL );
+end;
+
+procedure TZMQSocket.setKeepAliveIntvl( const Value: Integer );
+begin
+  setSockOptInteger( ZMQ_TCP_KEEPALIVE_INTVL, Value );
+end;
+
+{$else}
+function TZMQSocket.getHWM: UInt64;
+begin
+  result := getSockOptInt64( ZMQ_HWM );
+end;
+
+function TZMQSocket.getSwap: Int64;
+begin
+  result := getSockOptInt64( ZMQ_SWAP );
+end;
+
+function TZMQSocket.getRecoveryIVLMSec: Int64;
+begin
+  result := getSockOptInt64( ZMQ_RECOVERY_IVL_MSEC );
+end;
+
+function TZMQSocket.getMCastLoop: Int64;
+begin
+  result := getSockOptInt64( ZMQ_MCAST_LOOP );
+end;
+
+procedure TZMQSocket.setHWM( const Value: UInt64 );
 begin
   setSockOptInt64( ZMQ_HWM, Value );
 end;
@@ -690,9 +826,20 @@ procedure TZMQSocket.setSwap( const Value: Int64 );
 begin
   setSockOptInt64( ZMQ_SWAP, Value );
 end;
+
+procedure TZMQSocket.setRecoveryIvlMSec( const Value: Int64 );
+begin
+  setSockOptInt64( ZMQ_RECOVERY_IVL_MSEC, Value );
+end;
+
+procedure TZMQSocket.setMCastLoop( const Value: Int64 );
+begin
+  setSockOptInt64( ZMQ_MCAST_LOOP, Value );
+end;
+
 {$endif}
 
-procedure TZMQSocket.setAffinity( const Value: Int64 );
+procedure TZMQSocket.setAffinity( const Value: UInt64 );
 begin
   setSockOptInt64( ZMQ_AFFINITY, Value );
 end;
@@ -712,36 +859,40 @@ begin
   setSockOptInteger( ZMQ_SNDTIMEO, Value );
 end;
 
-procedure TZMQSocket.setRate( const Value: int64 );
+procedure TZMQSocket.setRate( const Value: {$ifdef zmq3}Integer{$else}int64{$endif} );
 begin
+  {$ifdef zmq3}
+  setSockOptInteger( ZMQ_RATE, Value );
+  {$else}
   setSockOptInt64( ZMQ_RATE, Value );
+  {$endif}
 end;
 
-procedure TZMQSocket.setRecoveryIvl( const Value: Int64 );
+procedure TZMQSocket.setRecoveryIvl( const Value: {$ifdef zmq3}Integer{$else}int64{$endif} );
 begin
+  {$ifdef zmq3}
+  setSockOptInteger( ZMQ_RECOVERY_IVL, Value );
+  {$else}
   setSockOptInt64( ZMQ_RECOVERY_IVL, Value );
+  {$endif}
 end;
 
-{$ifndef zmq3}
-procedure TZMQSocket.setRecoveryIvlMSec( const Value: Int64 );
+procedure TZMQSocket.setSndBuf( const Value: {$ifdef zmq3}Integer{$else}UInt64{$endif} );
 begin
-  setSockOptInt64( ZMQ_RECOVERY_IVL_MSEC, Value );
-end;
-
-procedure TZMQSocket.setMCastLoop( const Value: Int64 );
-begin
-  setSockOptInt64( ZMQ_MCAST_LOOP, Value );
-end;
-{$endif}
-
-procedure TZMQSocket.setSndBuf( const Value: Int64 );
-begin
+  {$ifdef zmq3}
+  setSockOptInteger( ZMQ_SNDBUF, Value );
+  {$else}
   setSockOptInt64( ZMQ_SNDBUF, Value );
+  {$endif}
 end;
 
-procedure TZMQSocket.setRcvBuf( const Value: Int64 );
+procedure TZMQSocket.setRcvBuf( const Value: {$ifdef zmq3}Integer{$else}UInt64{$endif} );
 begin
+  {$ifdef zmq}
+  setSockOptInteger( ZMQ_RCVBUF, Value );
+  {$else}
   setSockOptInt64( ZMQ_RCVBUF, Value );
+  {$endif}
 end;
 
 procedure TZMQSocket.setLinger( const Value: Integer );

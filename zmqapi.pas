@@ -141,6 +141,7 @@ type
     function getBacklog: Integer;
     function getFD: Pointer;
     function getEvents: TZMQPollEvents;
+    function getHWM: {$ifdef zmq3}Integer{$else}UInt64{$endif};
 
     {$ifdef zmq3}
     function getSndHWM: Integer;
@@ -164,16 +165,15 @@ type
     function getKeepAliveIntvl: Integer;
     procedure setKeepAliveIntvl( const Value: Integer );
     {$else}
-    function getHWM: UInt64;
     function getSwap: Int64;
     function getRecoveryIvlMSec: Int64;
     function getMCastLoop: Int64;
-    procedure setHWM( const Value: UInt64 );
     procedure setSwap( const Value: Int64 );
     procedure setRecoveryIvlMSec( const Value: Int64 );
     procedure setMCastLoop( const Value: Int64 );
     {$endif}
 
+    procedure setHWM( const Value: {$ifdef zmq3}Integer{$else}UInt64{$endif} );
     procedure setRcvTimeout( const Value: Integer );
     procedure setSndTimeout( const Value: Integer );
     procedure setAffinity( const Value: UInt64 );
@@ -216,7 +216,6 @@ type
     property SndHWM: Integer read getSndHWM write setSndHwm;
     property RcvHWM: Integer read getRcvHWM write setRcvHwm;
     property MaxMsgSize: Int64 read getMaxMsgSize write setMaxMsgSize;
-
     property MulticastHops: Integer read getMulticastHops write setMulticastHops;
     property IPv4Only: Boolean read getIPv4Only write setIPv4Only;
     property LastEndpoint: String read getLastEndpoint write setLastEndpoint;
@@ -224,15 +223,13 @@ type
     property KeepAliveIdle: Integer read getKeepAliveIdle write setKeepAliveIdle;
     property KeepAliveCnt: Integer read getKeepAliveCnt write setKeepAliveCnt;
     property KeepAliveIntvl: Integer read getKeepAliveIntvl write setKeepAliveIntvl;
-
-
-
     {$else}
-    property HWM: UInt64 read getHWM write setHWM;
     property Swap: Int64 read getSwap write setSwap;
     property RecoveryIvlMSec: Int64 read getRecoveryIvlMSec write setRecoveryIvlMSec;
     property MCastLoop: Int64 read getMCastLoop write setMCastLoop;
     {$endif}
+
+    property HWM: {$ifdef zmq3}Integer{$else}UInt64{$endif} read getHWM write setHWM;
     property RcvTimeout: Integer read getRcvTimeout write setRcvTimeout;
     property SndTimeout: Integer read getSndTimeout write setSndTimeout;
     property Affinity: UInt64 read getAffinity write setAffinity;
@@ -695,6 +692,16 @@ begin
   Result := TZMQPollEvents( Byte(i) );
 end;
 
+function TZMQSocket.getHWM: {$ifdef zmq3}Integer{$else}UInt64{$endif};
+begin
+  {$ifdef zmq3}
+  result := RcvHWM;
+  // warning depreceated.
+  {$else}
+  result := getSockOptInt64( ZMQ_HWM );
+  {$endif}
+end;
+
 {$ifdef zmq3}
 function TZMQSocket.getSndHWM: Integer;
 begin
@@ -797,10 +804,6 @@ begin
 end;
 
 {$else}
-function TZMQSocket.getHWM: UInt64;
-begin
-  result := getSockOptInt64( ZMQ_HWM );
-end;
 
 function TZMQSocket.getSwap: Int64;
 begin
@@ -815,11 +818,6 @@ end;
 function TZMQSocket.getMCastLoop: Int64;
 begin
   result := getSockOptInt64( ZMQ_MCAST_LOOP );
-end;
-
-procedure TZMQSocket.setHWM( const Value: UInt64 );
-begin
-  setSockOptInt64( ZMQ_HWM, Value );
 end;
 
 procedure TZMQSocket.setSwap( const Value: Int64 );
@@ -838,6 +836,17 @@ begin
 end;
 
 {$endif}
+
+procedure TZMQSocket.setHWM( const Value: {$ifdef zmq3}Integer{$else}UInt64{$endif} );
+begin
+  {$ifdef zmq3}
+  SndHWM := Value;
+  RcvHWM := Value;
+  {$else}
+  setSockOptInt64( ZMQ_HWM, Value );
+  {$endif}
+end;
+
 
 procedure TZMQSocket.setAffinity( const Value: UInt64 );
 begin

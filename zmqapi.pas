@@ -101,6 +101,9 @@ type
     fSocket: Pointer;
     fContext: TZMQContext;
   private
+    {$ifdef zmq3}
+    fAcceptFilter: TStringList;
+    {$endif}
     function getTerminated: Boolean;
     procedure close;
     procedure setSockOpt( option: Integer; optval: Pointer; optvallen: size_t );
@@ -123,6 +126,7 @@ type
     procedure setSockOptInt64( option: Integer; const Value: Int64 );
     procedure setSockOptInteger( option: Integer; const Value: Integer );
   public
+    constructor Create;
     destructor Destroy; override;
 
     function getSocketType: TZMQSocketType;
@@ -155,7 +159,6 @@ type
     function getIPv4Only: Boolean;
     procedure setIPv4Only( const Value: Boolean );
     function getLastEndpoint: String;
-    procedure setLastEndpoint( const Value: String );
     function getKeepAlive: TZMQKeepAlive;
     procedure setKeepAlive( const Value: TZMQKeepAlive );
     function getKeepAliveIdle: Integer;
@@ -164,6 +167,8 @@ type
     procedure setKeepAliveCnt( const Value: Integer );
     function getKeepAliveIntvl: Integer;
     procedure setKeepAliveIntvl( const Value: Integer );
+    function getAcceptFilter( indx: Integer ): String;
+    procedure setAcceptFilter( indx: Integer; const Value: String );
     {$else}
     function getSwap: Int64;
     function getRecoveryIvlMSec: Int64;
@@ -218,11 +223,14 @@ type
     property MaxMsgSize: Int64 read getMaxMsgSize write setMaxMsgSize;
     property MulticastHops: Integer read getMulticastHops write setMulticastHops;
     property IPv4Only: Boolean read getIPv4Only write setIPv4Only;
-    property LastEndpoint: String read getLastEndpoint write setLastEndpoint;
+    property LastEndpoint: String read getLastEndpoint;
     property KeepAlive: TZMQKeepAlive read getKeepAlive write setKeepAlive;
     property KeepAliveIdle: Integer read getKeepAliveIdle write setKeepAliveIdle;
     property KeepAliveCnt: Integer read getKeepAliveCnt write setKeepAliveCnt;
     property KeepAliveIntvl: Integer read getKeepAliveIntvl write setKeepAliveIntvl;
+
+    procedure AddAcceptFilter( addr: String );
+    property AcceptFilter[indx: Integer]: String read getAcceptFilter write setAcceptFilter;
     {$else}
     property Swap: Int64 read getSwap write setSwap;
     property RecoveryIvlMSec: Int64 read getRecoveryIvlMSec write setRecoveryIvlMSec;
@@ -480,10 +488,20 @@ end;
 
 { TZMQSocket }
 
+constructor TZMQSocket.Create;
+begin
+  {$ifdef zmq3}
+  fAcceptFilter := TStringList.Create;
+  {$endif}
+end;
+
 destructor TZMQSocket.destroy;
 begin
   close;
   fContext.RemoveSocket( Self );
+  {$ifdef zmq3}
+  fAcceptFilter.Free;
+  {$endif}
   inherited;
 end;
 
@@ -754,13 +772,14 @@ begin
 end;
 
 function TZMQSocket.getLastEndpoint: String;
+var
+  s: ShortString;
+  optvallen: Cardinal;
 begin
-  // todo;
-end;
-
-procedure TZMQSocket.setLastEndpoint( const Value: String );
-begin
-  // todo;
+  optvallen := 255;
+  getSockOpt( ZMQ_LAST_ENDPOINT, @s[1], optvallen );
+  SetLength( s, optvallen - 1);
+  result := s;
 end;
 
 function TZMQSocket.getKeepAlive: TZMQKeepAlive;
@@ -801,6 +820,55 @@ end;
 procedure TZMQSocket.setKeepAliveIntvl( const Value: Integer );
 begin
   setSockOptInteger( ZMQ_TCP_KEEPALIVE_INTVL, Value );
+end;
+
+procedure TZMQSocket.AddAcceptFilter( addr: String );
+begin
+  try
+    setSockOpt( ZMQ_TCP_ACCEPT_FILTER, @addr[1], Length( addr ) );
+    fAcceptFilter.Add( addr );
+  except
+    raise;
+  end;
+end;
+
+function TZMQSocket.getAcceptFilter( indx: Integer ): String;
+begin
+  if ( indx < 0 ) or ( indx >= fAcceptFilter.Count ) then
+    raise EZMQException.Create( '[getAcceptFilter] Index out of bounds.' );
+  result := fAcceptFilter[indx];
+end;
+
+procedure TZMQSocket.setAcceptFilter( indx: Integer; const Value: String );
+var
+  i,num: Integer;
+begin
+  num := 0;
+  if ( indx < 0 ) or ( indx >= fAcceptFilter.Count ) then
+    raise EZMQException.Create( '[getAcceptFilter] Index out of bounds.' );
+
+  setSockOpt( ZMQ_TCP_ACCEPT_FILTER, nil, 0 );
+  for i := 0 to fAcceptFilter.Count - 1 do
+  begin
+    try
+      if i <> indx then
+        setSockOpt( ZMQ_TCP_ACCEPT_FILTER, @fAcceptFilter[i][1], Length( fAcceptFilter[i] ) )
+      else begin
+        setSockOpt( ZMQ_TCP_ACCEPT_FILTER, @Value[1], Length( Value ) );
+        fAcceptFilter[i] := Value;
+      end;
+    except
+      on e: EZMQException do
+      begin
+        num := e.Num;
+        if i = indx then
+          setSockOpt( ZMQ_TCP_ACCEPT_FILTER, @fAcceptFilter[i][1], Length( fAcceptFilter[i] ) )
+      end else
+        raise;
+    end;
+  end;
+  if num <> 0 then
+    raise EZMQException.Create( num );
 end;
 
 {$else}
@@ -897,7 +965,7 @@ end;
 
 procedure TZMQSocket.setRcvBuf( const Value: {$ifdef zmq3}Integer{$else}UInt64{$endif} );
 begin
-  {$ifdef zmq}
+  {$ifdef zmq3}
   setSockOptInteger( ZMQ_RCVBUF, Value );
   {$else}
   setSockOptInt64( ZMQ_RCVBUF, Value );

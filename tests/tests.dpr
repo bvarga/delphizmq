@@ -20,7 +20,8 @@ uses
   GUITestRunner,
   TextTestRunner,
   SocketTestCase in 'SocketTestCase.pas',
-  ContextTestCase in 'ContextTestCase.pas';
+  ContextTestCase in 'ContextTestCase.pas',
+  PushPullTestCase in 'PushPullTestCase.pas';
 
 {$R *.RES}
 

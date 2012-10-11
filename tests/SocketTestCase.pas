@@ -25,11 +25,13 @@ type
   published
     procedure TestSocketType;
     procedure TestrcvMore;
+    procedure TestHWM;
     {$ifdef zmq3}
     procedure TestSndHWM;
     procedure TestRcvHWM;
+    procedure TestLastEndpoint;
+    procedure TestAcceptFilter;
     {$else}
-    procedure TestHWM;
     procedure TestSwap;
     procedure TestRecoveryIvlMSec;
     procedure TestMCastLoop;
@@ -48,12 +50,13 @@ type
     procedure TestBacklog;
     procedure TestFD;
     procedure TestEvents;
-
-
     procedure TestSubscribe;
     procedure TestunSubscribe;
 
     procedure SocketPair;
+
+
+
 
   end;
 
@@ -108,6 +111,24 @@ begin
   end;
 end;
 
+procedure TSocketTestCase.TestHWM;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      CheckEquals( {$ifdef zmq3}1000{$else}0{$endif}, FZMQSocket.HWM, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.HWM := 42;
+      CheckEquals( 42, FZMQSocket.HWM );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+
 {$ifdef zmq3}
 procedure TSocketTestCase.TestSndHWM;
 var
@@ -143,8 +164,7 @@ begin
   end;
 end;
 
-{$else}
-procedure TSocketTestCase.TestHWM;
+procedure TSocketTestCase.TestLastEndpoint;
 var
   st: TZMQSocketType;
 begin
@@ -152,14 +172,58 @@ begin
   begin
     FZMQSocket := context.Socket( st );
     try
-      CheckEquals( 0, FZMQSocket.HWM, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
-      FZMQSocket.HWM := 42;
-      CheckEquals( 42, FZMQSocket.HWM );
+      CheckEquals( '', FZMQSocket.LastEndpoint, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.bind('tcp://127.0.0.1:5555');
+      Sleep(10);
+      CheckEquals( 'tcp://127.0.0.1:5555', FZMQSocket.LastEndpoint, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
     finally
+      FZMQSocket.unbind('tcp://127.0.0.1:5555');
+      Sleep(10);
       FZMQSocket.Free;
     end;
   end;
 end;
+
+procedure TSocketTestCase.TestAcceptFilter;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      FZMQSocket.bind('tcp://*:5555');
+      Sleep(10);
+      FZMQSocket.AddAcceptFilter('192.168.1.1');
+      CheckEquals( '192.168.1.1', FZMQSocket.AcceptFilter[0], 'Add Accept Filter 1' );
+      FZMQSocket.AddAcceptFilter('192.168.1.2');
+      CheckEquals( '192.168.1.2', FZMQSocket.AcceptFilter[1], 'Add Accept Filter 2' );
+      FZMQSocket.AcceptFilter[0] := '192.168.1.3';
+      CheckEquals( '192.168.1.3', FZMQSocket.AcceptFilter[0], 'Change Accept Filter 1' );
+      try
+        // trying to set wrong value
+        FZMQSocket.AcceptFilter[0] := 'xraxsda';
+        CheckEquals( '192.168.1.3', FZMQSocket.AcceptFilter[0], 'Change Accept Filter 2' );
+      except
+        on e: Exception do
+        begin
+          if e is EZMQException then
+          begin
+            CheckEquals( '192.168.1.3', FZMQSocket.AcceptFilter[0], 'set Invalid check 1' );
+            CheckEquals( '192.168.1.2', FZMQSocket.AcceptFilter[1], 'set Invalid check 2' );
+          end else
+            raise;
+        end;
+      end;
+    finally
+      FZMQSocket.unbind('tcp://*:5555');
+      Sleep(10);
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
+{$else}
 
 procedure TSocketTestCase.TestSwap;
 var
@@ -342,8 +406,8 @@ begin
     FZMQSocket := context.Socket( st );
     try
       CheckEquals( 0, FZMQSocket.RcvBuf, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
-      FZMQSocket.RcvBuf := 1024;
-      CheckEquals( 1024, FZMQSocket.RcvBuf );
+      FZMQSocket.RcvBuf := 4096;
+      CheckEquals( 4096, FZMQSocket.RcvBuf );
     finally
       FZMQSocket.Free;
     end;

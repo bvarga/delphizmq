@@ -62,7 +62,7 @@ in blocking or nonblocking (in the v3 it's called dontwait) mode.
     socket.send( tsl );
     tsl.Free;
       
-Sending messages is as easy as
+Receiving messages is as easy as
     msize := socket.recv( msg );
     // the new message is in the msg, and msize holds the length of the message
     

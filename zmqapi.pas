@@ -1192,13 +1192,12 @@ end;
 function TZMQSocket.recv( var msg: String; flags: TZMQRecvFlags = [] ): Integer;
 var
   sStrm: TStringStream;
-  size: Integer;
 begin
   sStrm := TStringStream.Create('');
   try
-    Result := recv( sStrm, size, flags );
+    Result := recv( sStrm, flags );
     sStrm.Position := 0;
-    msg := sStrm.ReadString( size );
+    msg := sStrm.ReadString( result );
   finally
     sStrm.Free;
   end;

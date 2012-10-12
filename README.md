@@ -63,10 +63,11 @@ in blocking or nonblocking (in the v3 it's called dontwait) mode.
     tsl.Free;
       
 Receiving messages is as easy as
+
     msize := socket.recv( msg );
     // the new message is in the msg, and msize holds the length of the message
     
-    // read what's in the socket to a Stream
+    // to a Stream
     msize := socket.recv( stream );
     
     // read multipart message

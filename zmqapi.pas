@@ -205,7 +205,6 @@ type
     {$endif}
 
     function recv( msg: TZMQMessage; flags: TZMQRecvFlags = [] ): Integer; overload;
-    function recv( strm: TStream; var size: Integer; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( var msg: String; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer; overload;
@@ -1177,25 +1176,17 @@ begin
   result := recv( msg, Byte( flags ) );
 end;
 
-function TZMQSocket.recv( strm: TStream; var size: Integer; flags: TZMQRecvFlags = [] ): Integer;
+function TZMQSocket.recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer;
 var
   zmqmsg: TZMQMessage;
 begin
   zmqmsg := TZMQMessage.Create;
   try
     result := recv( zmqmsg, flags );
-    size := zmqmsg.size;
-    strm.Write( zmqmsg.data^, size );
+    strm.Write( zmqmsg.data^, result );
   finally
     zmqmsg.Free;
   end;
-end;
-
-function TZMQSocket.recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer;
-var
-  size: Integer;
-begin
-  result := recv( strm, size, flags );
 end;
 
 function TZMQSocket.recv( var msg: String; flags: TZMQRecvFlags = [] ): Integer;

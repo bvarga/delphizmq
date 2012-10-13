@@ -369,7 +369,7 @@ function zmq_device(device: Integer; insocket,outsocket: Pointer): Integer; cdec
 {*  about minutiae of time-related functions on different OS platforms.       *}
 
 {*  Starts the stopwatch. Returns the handle to the watch.                    *}
-function zmq_stopwatch: Pointer; stdcall; external libzmq;
+function zmq_stopwatch_start: Pointer; stdcall; external libzmq;
 
 {*  Stops the stopwatch. Returns the number of microseconds elapsed since     *}
 {*  the stopwatch was started.                                                *}

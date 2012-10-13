@@ -86,7 +86,8 @@ TODO
 
 * if poll returns ETERM the socket with the terminated context should be 
   removed from the poll, and closed;
-
+* zmq_stopwatch_stop returns the correct value, but on program exit there's 
+  an exception.
 
 Copying
 =======

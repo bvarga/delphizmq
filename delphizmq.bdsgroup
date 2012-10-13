@@ -35,7 +35,9 @@
       <Projects Name="mtrelay.exe">examples\mtrelay.bdsproj</Projects>
       <Projects Name="syncpub.exe">examples\syncpub.bdsproj</Projects>
       <Projects Name="syncsub.exe">examples\syncsub.bdsproj</Projects>
-      <Projects Name="Targets">tests.exe hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe syncpub.exe syncsub.exe</Projects>
+      <Projects Name="local_lat.exe">perf\local_lat.bdsproj</Projects>
+      <Projects Name="remote_lat.exe">perf\remote_lat.bdsproj</Projects>
+      <Projects Name="Targets">tests.exe hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe syncpub.exe syncsub.exe local_lat.exe remote_lat.exe</Projects>
     </Projects>
     <Dependencies/>
   </Default.Personality>

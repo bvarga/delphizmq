@@ -10,6 +10,10 @@
 	</PersonalityInfo>
 	<Default.Personality>  
     
+    
+    
+    
+    
     <Projects>
       <Projects Name="tests.exe">tests\tests.bdsproj</Projects>
       <Projects Name="hwclient.exe">examples\hwclient.bdsproj</Projects>
@@ -37,7 +41,11 @@
       <Projects Name="syncsub.exe">examples\syncsub.bdsproj</Projects>
       <Projects Name="local_lat.exe">perf\local_lat.bdsproj</Projects>
       <Projects Name="remote_lat.exe">perf\remote_lat.bdsproj</Projects>
-      <Projects Name="Targets">tests.exe hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe syncpub.exe syncsub.exe local_lat.exe remote_lat.exe</Projects>
+      <Projects Name="inproc_lat.exe">perf\inproc_lat.bdsproj</Projects>
+      <Projects Name="local_thr.exe">perf\local_thr.bdsproj</Projects>
+      <Projects Name="remote_thr.exe">perf\remote_thr.bdsproj</Projects>
+      <Projects Name="inproc_thr.exe">perf\inproc_thr.bdsproj</Projects>
+      <Projects Name="Targets">tests.exe hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe syncpub.exe syncsub.exe local_lat.exe remote_lat.exe inproc_lat.exe local_thr.exe remote_thr.exe inproc_thr.exe</Projects>
     </Projects>
     <Dependencies/>
   </Default.Personality>

@@ -264,6 +264,8 @@ type
     fContext: Pointer;
     fSockets: TList;
     cs: TRTLCriticalSection;
+    fLinger: Integer;
+
     {$ifdef zmq3}
     function getOption( option: Integer ): Integer;
     procedure setOption( option, optval: Integer );
@@ -280,6 +282,8 @@ type
     destructor Destroy; override;
     function Socket( stype: TZMQSocketType ): TZMQSocket;
     property ContextPtr: Pointer read fContext;
+    //  < -1 means dont change linger when destroy
+    property Linger: Integer read fLinger write fLinger;
 
     {$ifdef zmq3}
     procedure RegisterMonitor( proc: TZMQMonitorProc );
@@ -1234,6 +1238,7 @@ begin
   {$else}
   fContext := zmq_init( io_threads );
   {$endif}
+  fLinger := -2;
   if ContextPtr = nil then
     raise EZMQException.Create;
   InitializeCriticalSection( cs );
@@ -1241,7 +1246,12 @@ begin
 end;
 
 destructor TZMQContext.destroy;
+var
+  i: Integer;
 begin
+  if fLinger >= -1 then
+  for i:= 0 to fSockets.Count - 1 do
+    TZMQSocket(fSockets[i]).Linger := Linger;
   {$ifdef zmq3}
   CheckResult( zmq_ctx_destroy( ContextPtr ) );
   {$else}

@@ -6,7 +6,6 @@ uses
     SysUtils
   , Windows
   , zmqapi
-  , zmq
   ;
 
 var
@@ -18,8 +17,7 @@ var
   socket: TZMQSocket;
   msg: TZMQMessage;
   i: Integer;
-  //watch: Pointer;
-  elapsed: Word;
+  elapsed,
   latency: Real;
 
   fFrequency,
@@ -45,7 +43,6 @@ begin
 
   QueryPerformanceFrequency( fFrequency );
   QueryPerformanceCounter( fStart );
-  //watch := zmq_stopwatch_start;
 
   for i := 0 to roundtripcount - 1 do
   begin
@@ -54,9 +51,8 @@ begin
       raise Exception.Create( 'message of incorrect size received' );
   end;
   QueryPerformanceCounter( fStop );
-  elapsed := (fStop - fStart) div fFrequency;
+  elapsed := 1000*1000*(fStop - fStart) / fFrequency;
 
-  //elapsed := zmq_stopwatch_stop( watch );
   msg.Free;
 
   latency := elapsed / (roundtripcount * 2);
@@ -64,7 +60,7 @@ begin
   Writeln( Format('message size: %d [B]',[ msgsize ] ) );
   Writeln( Format('roundtrip count: %d', [roundtripcount] ) );
   Writeln( Format('average latency: %.3f [us]', [ latency ] ) );
-  
+
   socket.Free;
   context.Free;
 end.

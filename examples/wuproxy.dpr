@@ -40,7 +40,7 @@ begin
       frontend.recv( msg );
       more := frontend.rcvMore;
       if more then
-        backend.send( msg, [rsfSndMore] )
+        backend.send( msg, [sfSndMore] )
       else
         backend.send( msg, [] );
       msg.free;

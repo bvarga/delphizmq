@@ -54,7 +54,7 @@ begin
         pollResult.socket.recv( msg );
         more := pollResult.socket.rcvMore;
         if more then
-          otherSocket.send( msg, [rsfSndMore] )
+          otherSocket.send( msg, [sfSndMore] )
         else
           otherSocket.send( msg, [] );
        msg.Free;

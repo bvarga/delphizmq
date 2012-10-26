@@ -9,15 +9,13 @@ program tests;
   default.
 
 }
+{$I zmq.inc}
 
 {$IFDEF CONSOLE_TESTRUNNER}
 {$APPTYPE CONSOLE}
 {$ENDIF}
 
 uses
-  {$ifdef fastmm4}
-  Fastmm4,
-  {$endif}
   Forms,
   TestFramework,
   GUITestRunner,

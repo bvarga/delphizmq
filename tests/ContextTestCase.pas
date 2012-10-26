@@ -22,6 +22,7 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    procedure ContextTerminate;
     {$ifdef zmq3}
     procedure ContextDefaults;
     procedure SetIOThreads;
@@ -31,7 +32,33 @@ type
 
 implementation
 
+uses
+  SysUtils;
+
 { TContextTestCase }
+
+procedure TContextTestCase.ContextTerminate;
+var
+  st: TZMQSocketType;
+  FZMQsocket: TZMQSocket;
+  s: String;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      FZMQSocket.bind('tcp://127.0.0.1:5555');
+      context.Linger := 10;
+      context.Free;
+      //CheckEquals( True, FZMQSocket.Terminated, 'Socket has not terminated! socket type: ' + IntToStr( Ord( st ) ) );
+
+    finally
+      context := TZMQContext.Create;
+
+      //FZMQsocket.Free;
+    end;
+  end;
+end;
 
 procedure TContextTestCase.SetUp;
 begin

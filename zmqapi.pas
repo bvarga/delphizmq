@@ -1229,9 +1229,7 @@ var
   msg: TZMQMessage;
   msgsize: Integer;
   event: zmq_event_t;
-  s: ShortString;
   zmqEvent: TZMQEvent;
-  mstr: TMemoryStream;
   i: Integer;
 begin
   socket := ZMQMonitorRec.context.Socket( stPair );
@@ -1302,6 +1300,8 @@ begin
     if rc = WAIT_FAILED then
     raise Exception.Create( 'error in WaitForSingleObject for Monitor Thread' );
     CheckResult( zmq_socket_monitor( SocketPtr, nil ,0 ) );
+    Dispose( fMonitorRec );
+    fMonitorRec := nil;
   end;
 end;
 
@@ -1413,14 +1413,17 @@ begin
   if fLinger >= -1 then
   for i:= 0 to fSockets.Count - 1 do
     TZMQSocket(fSockets[i]).Linger := Linger;
+
+  while fSockets.Count > 0 do
+    TZMQSocket(fSockets[0]).Free;
+
   {$ifdef zmq3}
   CheckResult( zmq_ctx_destroy( ContextPtr ) );
   {$else}
   CheckResult( zmq_term( ContextPtr ) );
   {$endif}
-  while fSockets.Count > 0 do
-    TZMQSocket(fSockets[0]).Free;
 
+  fSockets.Free;
   DeleteCriticalSection( cs );
   inherited;
 end;

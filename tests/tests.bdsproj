@@ -123,9 +123,9 @@
 			<Directories Name="UnitOutputDir">..\dcu</Directories>
 			<Directories Name="PackageDLLOutputDir"></Directories>
 			<Directories Name="PackageDCPOutputDir"></Directories>
-			<Directories Name="SearchPath">;$(BDS)\Source\DUnit\src;..\</Directories>
+			<Directories Name="SearchPath">..\dunit\src;$(BDS)\Source\DUnit\src;..\</Directories>
 			<Directories Name="Packages"></Directories>
-			<Directories Name="Conditionals">CONSOLE_TESTRUNNER</Directories>
+			<Directories Name="Conditionals">fastmm</Directories>
 			<Directories Name="DebugSourceDirs"></Directories>
 			<Directories Name="UsePackages">False</Directories>
 		</Directories>

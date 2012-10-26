@@ -76,7 +76,7 @@ Receiving messages is as easy as
     // this will add message parts to the stringlist, and returns
     // the count of the messages received.
 
-Monitoring Sockets ( just available in v3.2 ``)
+Monitoring Sockets ( just available in `v3.2`)
 
     // define a callback like this.
     procedure TMyClass.MonitorCallback( event: TZMQEvent );
@@ -85,7 +85,6 @@ Monitoring Sockets ( just available in v3.2 ``)
     end;
     
     // Register the callback
-    socket := context.Socket( stRouter );
     socket.RegisterMonitor( MonitorCallback, cZMQMonitorEventsAll );
     
     // The `MonitorCallback` is called from a separate thread, created by `RegisterMonitor`

@@ -48,7 +48,8 @@ type
 
 
 const
-  cZMQMonitorEventsAll: TZMQMonitorEvents = [ meConnected,
+
+  cZMQMonitorEventsAll = [ meConnected,
     meConnectDelayed,
     meConnectRetried,
     meListening,
@@ -279,7 +280,7 @@ type
 
     {$ifdef zmq3}
     function recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
-    procedure RegisterMonitor( proc: TZMQMonitorProc; events: TZMQMonitorEvents );
+    procedure RegisterMonitor( proc: TZMQMonitorProc; events: TZMQMonitorEvents = cZMQMonitorEventsAll );
     procedure DeRegisterMonitor;
 
     {$endif}
@@ -1268,7 +1269,7 @@ begin
   socket.Free;
 end;
 
-procedure TZMQSocket.RegisterMonitor( proc: TZMQMonitorProc; events: TZMQMonitorEvents );
+procedure TZMQSocket.RegisterMonitor( proc: TZMQMonitorProc; events: TZMQMonitorEvents = cZMQMonitorEventsAll );
 var
   tid: Cardinal;
 begin

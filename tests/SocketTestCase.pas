@@ -258,7 +258,7 @@ begin
   for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
   begin
     FZMQSocket := context.Socket( st );
-    FZMQSocket.RegisterMonitor( MonitorEvent1, cZMQMonitorEventsAll );
+    FZMQSocket.RegisterMonitor( MonitorEvent1 );
     try
       FZMQSocket.bind( 'tcp://*:5555' );
       WaitForSingleObject( ehandle1, INFINITE );
@@ -267,7 +267,7 @@ begin
       Check( zmqEvent.event = meListening, 'event should nbe meListening addr not equal socket type: ' + IntToStr( Ord( st ) ) );
 
       FZMQSocket.DeRegisterMonitor;
-      FZMQSocket.RegisterMonitor( MonitorEvent2, cZMQMonitorEventsAll );
+      FZMQSocket.RegisterMonitor( MonitorEvent2 );
       sleep(100);
       FZMQSocket.unbind( 'tcp://*:5555' );
       WaitForSingleObject( ehandle2, INFINITE );

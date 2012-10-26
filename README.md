@@ -76,10 +76,36 @@ Receiving messages is as easy as
     // this will add message parts to the stringlist, and returns
     // the count of the messages received.
 
+Monitoring Sockets ( just available in v3.2 ``)
+
+    // define a callback like this.
+    procedure TMyClass.MonitorCallback( event: TZMQEvent );
+    begin
+      // do something.
+    end;
+    
+    // Register the callback
+    socket := context.Socket( stRouter );
+    socket.RegisterMonitor( MonitorCallback, cZMQMonitorEventsAll );
+    
+    // The `MonitorCallback` is called from a separate thread, created by `RegisterMonitor`
+    
+    // you can deregister the monitoring with calling.
+    socket.DeRegisterMonitor; 
+
+    
 Examples
 ========
 
 in the examples directory there are some examples translated from the guide.
+
+Changes
+=======
+
+- Upgrade dll-s to v3.2.2 RC2
+- New monitoring logic implemented.
+- Default ZMQ version for the binding is now 3.2 ( can switch back to 2.2 by not defining `zmq3` in the `zmq.inc` file )
+
 
 TODO
 ====
@@ -88,6 +114,7 @@ TODO
   removed from the poll, and closed;
 * zmq_stopwatch_stop returns the correct value, but on program exit there's 
   an exception.
+
 
 Copying
 =======

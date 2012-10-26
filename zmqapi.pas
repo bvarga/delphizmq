@@ -29,10 +29,38 @@ uses
   , zmq
   ;
 
-const 
-  ZMQEAGAIN = 11;
-  
+
 type
+  {$ifdef zmq3}
+  TZMQMonitorEvent = (
+    meConnected,
+    meConnectDelayed,
+    meConnectRetried,
+    meListening,
+    meBindFailed,
+    meAccepted,
+    meAcceptFailed,
+    meClosed,
+    meCloseFailed,
+    meDisconnected
+  );
+  TZMQMonitorEvents = set of TZMQMonitorEvent;
+
+
+const
+  cZMQMonitorEventsAll: TZMQMonitorEvents = [ meConnected,
+    meConnectDelayed,
+    meConnectRetried,
+    meListening,
+    meBindFailed,
+    meAccepted,
+    meAcceptFailed,
+    meClosed,
+    meCloseFailed,
+    meDisconnected
+  ];
+type
+  {$endif}
 
   UInt64 = Int64;
 
@@ -93,6 +121,42 @@ type
 
   {$ifdef zmq3}
   TZMQKeepAlive = ( kaDefault, kaFalse, kaTrue );
+
+  TZMQEvent = record
+    event: TZMQMonitorEvent;
+    addr: String;
+    case TZMQMonitorEvent of
+      meConnected,
+      meListening,
+      meAccepted,
+      meClosed,
+      meDisconnected:
+        (
+        fd: Integer;
+        );
+      meConnectDelayed,
+      meBindFailed,
+      meAcceptFailed,
+      meCloseFailed:
+       (
+        err: Integer;
+        );
+      meConnectRetried: ( //connect_retried
+        interval: Integer;
+        );
+
+  end;
+
+  TZMQMonitorProc = procedure( event: TZMQEvent ) of object;
+
+  PZMQMonitorRec = ^TZMQMonitorRec;
+  TZMQMonitorRec = record
+    terminated: Boolean;
+    context: TZMQContext;
+    addr: String;
+    proc: TZMQMonitorProc;
+  end;
+
   {$endif}
 
   TZMQSocket = class
@@ -101,8 +165,12 @@ type
     fSocket: Pointer;
     fContext: TZMQContext;
   private
+    fRaiseEAgain: Boolean;
     {$ifdef zmq3}
     fAcceptFilter: TStringList;
+
+    fMonitorRec: PZMQMonitorRec;
+    fMonitorThread: THandle;
     {$endif}
     function getTerminated: Boolean;
     procedure close;
@@ -211,6 +279,9 @@ type
 
     {$ifdef zmq3}
     function recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
+    procedure RegisterMonitor( proc: TZMQMonitorProc; events: TZMQMonitorEvents );
+    procedure DeRegisterMonitor;
+
     {$endif}
 
     property SocketType: TZMQSocketType read getSocketType;
@@ -254,10 +325,8 @@ type
 
     property SocketPtr: Pointer read fSocket;
     property Terminated: Boolean read getTerminated;
+    property RaiseEAgain: Boolean read fRaiseEAgain write fRaiseEAgain;
   end;
-  {$ifdef zmq3}
-  TZMQMonitorProc = zmq_monitor_fn;
-  {$endif}
 
   TZMQContext = class
   private
@@ -286,7 +355,6 @@ type
     property Linger: Integer read fLinger write fLinger;
 
     {$ifdef zmq3}
-    procedure RegisterMonitor( proc: TZMQMonitorProc );
     property IOThreads: Integer read getIOThreads write setIOThreads;
     property MaxSockets: Integer read getMaxSockets write setMaxSockets;
     {$endif}
@@ -328,8 +396,7 @@ type
 implementation
 
 const
-  EAGAIN = 16;
-
+  ZMQEAGAIN = 11;
 
 { EZMQException }
 
@@ -493,13 +560,18 @@ end;
 
 constructor TZMQSocket.Create;
 begin
+  fRaiseEAgain := False;
   {$ifdef zmq3}
   fAcceptFilter := TStringList.Create;
+  fMonitorRec := nil;
   {$endif}
 end;
 
 destructor TZMQSocket.destroy;
 begin
+  {$ifdef zmq3}
+  //DeRegisterMonitor;
+  {$endif}
   close;
   fContext.RemoveSocket( Self );
   {$ifdef zmq3}
@@ -1149,9 +1221,94 @@ begin
     raise EZMQException.Create;
   end;
 end;
+
+procedure MonitorProc( ZMQMonitorRec: PZMQMonitorRec );
+var
+  socket: TZMQSocket;
+  msg: TZMQMessage;
+  msgsize: Integer;
+  event: zmq_event_t;
+  s: ShortString;
+  zmqEvent: TZMQEvent;
+  mstr: TMemoryStream;
+  i: Integer;
+begin
+  socket := ZMQMonitorRec.context.Socket( stPair );
+  socket.RcvTimeout := 100; // 1 sec.
+  socket.connect( ZMQMonitorRec.Addr );
+  msg := TZMQMessage.create;
+
+  while not ZMQMonitorRec.Terminated do
+  begin
+    try
+      msgsize := socket.recv( msg, [] );
+      if msgsize > -1 then
+      begin
+        CopyMemory( @event, msg.data, SizeOf(event) );
+        i := 0;
+        while event.event <> 0 do
+        begin
+        event.event := event.event shr 1;
+          inc( i );
+        end;
+        zmqEvent.event := TZMQMonitorEvent( i - 1 );
+        zmqEvent.addr := String( event.addr );
+        zmqEvent.fd := event.fd;
+        ZMQMonitorRec.proc( zmqEvent );
+        msg.rebuild;
+      end;
+    except
+      on e: EZMQException do
+      if e.Num <> ZMQEAGAIN then
+        raise;
+    end;
+
+  end;
+  msg.Free;
+  socket.Free;
+end;
+
+procedure TZMQSocket.RegisterMonitor( proc: TZMQMonitorProc; events: TZMQMonitorEvents );
+var
+  tid: Cardinal;
+begin
+  if fMonitorRec <> nil then
+    DeRegisterMonitor;
+
+  New( fMonitorRec );
+  fMonitorRec.Terminated := False;
+  fMonitorRec.context := fContext;
+  fMonitorRec.Addr := 'inproc://monitor.' + IntToHex( Integer( SocketPtr ),8 );
+  fMonitorRec.Proc := proc;
+
+  CheckResult( zmq_socket_monitor( SocketPtr,
+    PAnsiChar( AnsiString( fMonitorRec.Addr ) ), Word( events ) ) );
+
+  fMonitorThread := BeginThread( nil, 0, @MonitorProc, fMonitorRec, 0, tid );
+  sleep(1);
+
+end;
+
+procedure TZMQSocket.DeRegisterMonitor;
+var
+  rc: Cardinal;
+begin
+
+  if fMonitorRec <> nil then
+  begin
+    fMonitorRec.Terminated := True;
+    rc := WaitForSingleObject( fMonitorThread, INFINITE );
+    if rc = WAIT_FAILED then
+    raise Exception.Create( 'error in WaitForSingleObject for Monitor Thread' );
+    CheckResult( zmq_socket_monitor( SocketPtr, nil ,0 ) );
+  end;
+end;
+
 {$endif}
 
 function TZMQSocket.recv( msg: TZMQMessage; flags: Integer = 0 ): Integer;
+var
+  errn: Integer;
 begin
   {$ifdef zmq3}
   result := zmq_recvmsg( SocketPtr, msg.fMessage, flags );
@@ -1159,9 +1316,12 @@ begin
     raise EZMQException.Create('zmq_recvmsg return value less than -1.')
   else if result = -1 then
   begin
-    if zmq_errno = ETERM then
-      close;
-    raise EZMQException.Create;
+    errn := zmq_errno;
+    if errn = ETERM then
+      close
+    else
+    if errn <> ZMQEAGAIN then
+      raise EZMQException.Create( errn );
   end else
   begin
     {$ifdef debug}
@@ -1290,11 +1450,6 @@ end;
 procedure TZMQContext.setOption( option, optval: Integer );
 begin
   CheckResult( zmq_ctx_set( ContextPtr, option, optval ) );
-end;
-
-procedure TZMQContext.RegisterMonitor( proc: TZMQMonitorProc );
-begin
-  CheckResult( zmq_ctx_set_monitor( ContextPtr, proc ) );
 end;
 
 function TZMQContext.getIOThreads: Integer;

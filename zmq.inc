@@ -1,4 +1,4 @@
-{.$define zmq3}
+{$define zmq3}
 
 {$ifdef fpc}
   {$packset 1}

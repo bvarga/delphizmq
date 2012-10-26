@@ -271,12 +271,23 @@ const
   ZMQ_EVENT_CLOSE_FAILED = 256;
   ZMQ_EVENT_DISCONNECTED =512;
 
+  ZMQ_EVENT_ALL =
+    ZMQ_EVENT_CONNECTED or
+    ZMQ_EVENT_CONNECT_DELAYED or
+    ZMQ_EVENT_CONNECT_RETRIED or
+    ZMQ_EVENT_LISTENING or
+    ZMQ_EVENT_BIND_FAILED or
+    ZMQ_EVENT_ACCEPTED or
+    ZMQ_EVENT_ACCEPT_FAILED or
+    ZMQ_EVENT_CLOSED or
+    ZMQ_EVENT_CLOSE_FAILED or
+    ZMQ_EVENT_DISCONNECTED;
 
 {*  Socket event data (union member per event)                                *}
 type
-  zmq_event_data_t = record
+  zmq_event_t = record
+    event: Integer;
     addr: PAnsiChar;
-
     case Integer of
       0, // connected
       3, // listening
@@ -298,11 +309,6 @@ type
         );
   end;
 
-{*  Callback template for socket state changes                                *}
-type
-  zmq_monitor_fn = procedure( s: Pointer; event: Integer; data: zmq_event_data_t );
-
-function zmq_ctx_set_monitor( context: Pointer; monitor: zmq_monitor_fn ): Integer; cdecl; external libzmq;
 {$endif}
 
 function zmq_socket(context: Pointer; stype: Integer): Pointer; cdecl; external libzmq;
@@ -327,6 +333,8 @@ function zmq_recv (s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cde
 {$ifdef zmq3}
 function zmq_sendmsg(s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;
 function zmq_recvmsg(s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;
+
+function zmq_socket_monitor( s: Pointer; addr: PAnsiChar; events: Integer ): Integer; cdecl; external libzmq;
 
 {
 /*  Experimental                                                              */

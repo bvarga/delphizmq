@@ -18,7 +18,10 @@ type
   strict private
     context: TZMQContext;
     FZMQSocket: TZMQSocket;
-
+    {$ifdef zmq3}
+    procedure MonitorEvent1( event: TZMQEvent );
+    procedure MonitorEvent2( event: TZMQEvent );
+    {$endif}
   public
     procedure SetUp; override;
     procedure TearDown; override;
@@ -30,7 +33,9 @@ type
     procedure TestSndHWM;
     procedure TestRcvHWM;
     procedure TestLastEndpoint;
-    procedure TestAcceptFilter;
+    //procedure TestAcceptFilter;
+
+    procedure TestMonitor;
     {$else}
     procedure TestSwap;
     procedure TestRecoveryIvlMSec;
@@ -65,6 +70,11 @@ implementation
 uses
   Sysutils
   ;
+
+var
+  ehandle1,
+  ehandle2: THandle;
+  zmqEvent: TZMQEvent;
 
 { TSimpleTestCase }
 
@@ -184,7 +194,7 @@ begin
   end;
 end;
 
-procedure TSocketTestCase.TestAcceptFilter;
+{procedure TSocketTestCase.TestAcceptFilter;
 var
   st: TZMQSocketType;
 begin
@@ -221,6 +231,56 @@ begin
       FZMQSocket.Free;
     end;
   end;
+end;}
+
+procedure TSocketTestCase.MonitorEvent1( event: TZMQEvent );
+begin
+  zmqEvent := event;
+  SetEvent( ehandle1 );
+end;
+
+procedure TSocketTestCase.MonitorEvent2( event: TZMQEvent );
+begin
+  zmqEvent := event;
+  SetEvent( ehandle2 );
+end;
+
+procedure TSocketTestCase.TestMonitor;
+var
+  st: TZMQSocketType;
+begin
+  ehandle1 := CreateEvent( nil, true, false, nil );
+  ehandle2 := CreateEvent( nil, true, false, nil );
+
+  //ResetEvent( ehandle1 );
+  //ResetEvent( ehandle2 );
+
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    FZMQSocket.RegisterMonitor( MonitorEvent1, cZMQMonitorEventsAll );
+    try
+      FZMQSocket.bind( 'tcp://*:5555' );
+      WaitForSingleObject( ehandle1, INFINITE );
+      ResetEvent( ehandle1 );
+      CheckEquals( 'tcp://0.0.0.0:5555', zmqEvent.addr, 'addr not equal socket type: ' + IntToStr( Ord( st ) ) );
+      Check( zmqEvent.event = meListening, 'event should nbe meListening addr not equal socket type: ' + IntToStr( Ord( st ) ) );
+
+      FZMQSocket.DeRegisterMonitor;
+{      FZMQSocket.RegisterMonitor( MonitorEvent2, cZMQMonitorEventsAll );
+      FZMQSocket.unbind( 'tcp://*:5555' );
+      WaitForSingleObject( ehandle2, INFINITE );
+      ResetEvent( ehandle2 );
+      CheckEquals( 'tcp://0.0.0.0:5555', zmqEvent.addr, 'addr not equal socket type: ' + IntToStr( Ord( st ) ) );
+      Check( zmqEvent.event = meClosed, 'event should be meClosed addr not equal socket type: ' + IntToStr( Ord( st ) ) );
+}
+
+    finally
+      FZMQSocket.Free;
+      sleep(200);
+    end;
+  end;
+
 end;
 
 {$else}

@@ -10,6 +10,7 @@ uses
   , Classes
   , Windows
   , zmqapi
+  , zmq
   ;
 
 type
@@ -29,9 +30,6 @@ type
   end;
 
 implementation
-
-uses
-  zmq;
 
 { TContextTestCase }
 
@@ -70,7 +68,10 @@ begin
   context.MaxSockets := 16;
   CheckEquals( 16, context.MaxSockets );
 end;
+
+
 {$endif}
+
 
 initialization
   RegisterTest(TContextTestCase.Suite);

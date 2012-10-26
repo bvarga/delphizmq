@@ -15,6 +15,9 @@ program tests;
 {$ENDIF}
 
 uses
+  {$ifdef fastmm4}
+  Fastmm4,
+  {$endif}
   Forms,
   TestFramework,
   GUITestRunner,

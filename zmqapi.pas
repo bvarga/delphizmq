@@ -570,7 +570,7 @@ end;
 destructor TZMQSocket.destroy;
 begin
   {$ifdef zmq3}
-  //DeRegisterMonitor;
+  DeRegisterMonitor;
   {$endif}
   close;
   fContext.RemoveSocket( Self );
@@ -1320,7 +1320,7 @@ begin
     if errn = ETERM then
       close
     else
-    if errn <> ZMQEAGAIN then
+    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
       raise EZMQException.Create( errn );
   end else
   begin

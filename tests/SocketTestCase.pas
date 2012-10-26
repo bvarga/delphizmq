@@ -33,7 +33,7 @@ type
     procedure TestSndHWM;
     procedure TestRcvHWM;
     procedure TestLastEndpoint;
-    //procedure TestAcceptFilter;
+    procedure TestAcceptFilter;
 
     procedure TestMonitor;
     {$else}
@@ -194,7 +194,7 @@ begin
   end;
 end;
 
-{procedure TSocketTestCase.TestAcceptFilter;
+procedure TSocketTestCase.TestAcceptFilter;
 var
   st: TZMQSocketType;
 begin
@@ -231,7 +231,7 @@ begin
       FZMQSocket.Free;
     end;
   end;
-end;}
+end;
 
 procedure TSocketTestCase.MonitorEvent1( event: TZMQEvent );
 begin
@@ -267,13 +267,14 @@ begin
       Check( zmqEvent.event = meListening, 'event should nbe meListening addr not equal socket type: ' + IntToStr( Ord( st ) ) );
 
       FZMQSocket.DeRegisterMonitor;
-{      FZMQSocket.RegisterMonitor( MonitorEvent2, cZMQMonitorEventsAll );
+      FZMQSocket.RegisterMonitor( MonitorEvent2, cZMQMonitorEventsAll );
+      sleep(100);
       FZMQSocket.unbind( 'tcp://*:5555' );
       WaitForSingleObject( ehandle2, INFINITE );
       ResetEvent( ehandle2 );
       CheckEquals( 'tcp://0.0.0.0:5555', zmqEvent.addr, 'addr not equal socket type: ' + IntToStr( Ord( st ) ) );
       Check( zmqEvent.event = meClosed, 'event should be meClosed addr not equal socket type: ' + IntToStr( Ord( st ) ) );
-}
+
 
     finally
       FZMQSocket.Free;

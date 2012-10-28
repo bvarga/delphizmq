@@ -285,6 +285,9 @@ type
 
     {$endif}
 
+    // helpers. inspired by the zhelpers.h
+    procedure dump;
+
     property SocketType: TZMQSocketType read getSocketType;
     property RcvMore: Boolean read getRcvMore;
 
@@ -1388,6 +1391,22 @@ end;
 function TZMQSocket.getTerminated: Boolean;
 begin
   result := SocketPtr = nil;
+end;
+
+// helpers. inspired by the zhelpers.h
+procedure TZMQSocket.dump;
+var
+  tsl: TStringList;
+  i: Integer;
+begin
+  tsl := TStringList.Create;
+  try
+    recv( tsl );
+    for i := 0 to tsl.Count - 1 do
+      writeln( tsl[i] );
+  finally
+    tsl.Free;
+  end;
 end;
 
 { TZMQContext }

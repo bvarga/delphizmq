@@ -113,7 +113,10 @@ TODO
   removed from the poll, and closed;
 * zmq_stopwatch_stop returns the correct value, but on program exit there's 
   an exception.
-
+* if recv(string) recieves not a valid string ,but a binary data convert it 
+  to Hex.(not trivial, because String definition changes through delphi versions)
+  (the identity.dpr is a test case)
+* Decide the need of the zhelpers.h
 
 Copying
 =======

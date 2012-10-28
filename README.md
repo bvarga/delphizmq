@@ -100,10 +100,12 @@ in the examples directory there are some examples translated from the guide.
 
 Changes
 =======
+* poll function of TZMQPoller has a new optional parameter "pollCount".
+  
 
-- Upgrade dll-s to v3.2.2 RC2
-- New monitoring logic implemented.
-- Default ZMQ version for the binding is now 3.2 ( can switch back to 2.2 by not defining `zmq3` in the `zmq.inc` file )
+* Upgrade dll-s to v3.2.2 RC2
+* New monitoring logic implemented.
+* Default ZMQ version for the binding is now 3.2 ( can switch back to 2.2 by not defining `zmq3` in the `zmq.inc` file )
 
 
 TODO

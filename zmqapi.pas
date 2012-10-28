@@ -387,7 +387,7 @@ type
     destructor Destroy; override;
 
     procedure regist( socket: TZMQSocket; events: TZMQPollEvents );
-    function poll( timeout: Longint = -1 ): Integer;
+    function poll( timeout: Longint = -1; pollCount: Integer = -1 ): Integer;
 
     property pollResult[indx: Integer]: TZMQPollResult read getPollResult;
   end;
@@ -1561,11 +1561,22 @@ begin
   fSockets.Add( socket );
 end;
 
-function TZMQPoller.poll( timeout: Integer = -1 ): Integer;
+/// if the second parameter specified, than only the first "pollCount"
+/// sockets polled
+function TZMQPoller.poll( timeout: Integer = -1; pollCount: Integer = -1 ): Integer;
+var
+  pc: Integer;
 begin
   if fPollItemCount = 0 then
     raise EZMQException.Create( 'Nothing to poll!' );
-  result := zmq_poll( fPollItems[0], fPollItemCount, timeout );
+  if pollCount = -1 then
+    pc := fPollItemCount
+  else
+  if ( pollCount > -1 ) and ( pollCount <= fPollItemCount ) then
+    pc := pollCount
+  else
+    raise EZMQException.Create( 'wrong pollCount parameter.' );
+  result := zmq_poll( fPollItems[0], pc, timeout );
   if result < 0 then
     raise EZMQException.Create
 end;

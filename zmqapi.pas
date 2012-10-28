@@ -1399,6 +1399,7 @@ var
   tsl: TStringList;
   i: Integer;
 begin
+  writeln('----------------------------------------');
   tsl := TStringList.Create;
   try
     recv( tsl );

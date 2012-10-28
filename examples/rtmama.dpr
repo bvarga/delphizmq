@@ -6,7 +6,8 @@ program rtmama;
 {$APPTYPE CONSOLE}
 
 uses
-    SysUtils
+    Windows
+  , SysUtils
   , zmqapi
   ;
 

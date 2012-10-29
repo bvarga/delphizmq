@@ -108,7 +108,7 @@ type
     {$ifdef zmq3}
     function more: Boolean;
     function send( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
-    function recv( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
+    function recv( socket: TZMQSocket; flags: TZMQRecvFlags = [] ): Integer;
     {$endif}
   end;
 
@@ -348,8 +348,10 @@ type
     procedure setMaxSockets( const Value: Integer );
     {$endif}
   protected
+    fInterrupted: Boolean;
     procedure CheckResult( rc: Integer );
     procedure RemoveSocket( lSocket: TZMQSocket );
+
   public
     constructor create{$ifndef zmq3}( io_threads: Integer = 1 ){$endif};
     destructor Destroy; override;
@@ -357,11 +359,12 @@ type
     property ContextPtr: Pointer read fContext;
     //  < -1 means dont change linger when destroy
     property Linger: Integer read fLinger write fLinger;
-
+    property Interrupted: Boolean read fInterrupted;
     {$ifdef zmq3}
     property IOThreads: Integer read getIOThreads write setIOThreads;
     property MaxSockets: Integer read getMaxSockets write setMaxSockets;
     {$endif}
+
   end;
 
 type
@@ -397,11 +400,15 @@ type
   procedure ZMQDevice( device: TZMQDevice; insocket, outsocket: TZMQSocket );
   procedure ZMQVersion(var major, minor, patch: Integer);
 
+  function console_handler( dwCtrlType: DWORD ): BOOL; stdcall;
+
 implementation
 
 const
   ZMQEAGAIN = 11;
 
+var
+  contexts: TList;
 { EZMQException }
 
 constructor EZMQException.Create;
@@ -539,7 +546,7 @@ begin
 
 end;
 
-function TZMQMessage.recv( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
+function TZMQMessage.recv( socket: TZMQSocket; flags: TZMQRecvFlags = [] ): Integer;
 begin
   rebuild;
   result := zmq_msg_recv( fMessage, socket.SocketPtr, Byte( flags ) );
@@ -1414,6 +1421,8 @@ end;
 
 constructor TZMQContext.create{$ifndef zmq3}( io_threads: Integer ){$endif};
 begin
+  fInterrupted := false;
+  contexts.Add( Self );
   {$ifdef zmq3}
   fContext := zmq_ctx_new;
   {$else}
@@ -1444,6 +1453,7 @@ begin
   {$endif}
 
   fSockets.Free;
+  contexts.Delete( contexts.IndexOf(Self) );
   DeleteCriticalSection( cs );
   inherited;
 end;
@@ -1532,6 +1542,7 @@ begin
   end;
 end;
 
+
 { TZMQPoll }
 const
   fPollItemArrayInc = 10;
@@ -1609,4 +1620,26 @@ begin
   zmq_version( major, minor, patch );
 end;
 
+function console_handler( dwCtrlType: DWORD ): BOOL;
+var
+  i: Integer;
+begin
+  if CTRL_C_EVENT = dwCtrlType then
+  begin
+    for i := 0 to contexts.Count - 1 do
+      TZMQContext(contexts[i]).fInterrupted := True;
+    result := False;
+    // if I set to True than the app won't exit,
+    // but it's not the solution.
+  end else begin
+    result := False;
+  end;
+end;
+
+initialization
+  contexts := TList.Create;
+  Windows.SetConsoleCtrlHandler( @console_handler, True );
+
+finalization
+  contexts.Free;
 end.

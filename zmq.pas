@@ -24,8 +24,8 @@ interface
 
 const
 {$ifdef zmq3}
-//  libzmq = 'libzmq3-x86-v100-mt.dll';
-  libzmq = 'libzmq3-x86-v100-mt-gd.dll';
+  libzmq = 'libzmq3-x86-v100-mt.dll';
+//  libzmq = 'libzmq3-x86-v100-mt-gd.dll';
 {$else}
   libzmq = 'libzmq.dll';
 {$endif}

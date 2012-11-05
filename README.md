@@ -119,6 +119,8 @@ TODO
   to Hex.(not trivial, because String definition changes through delphi versions)
   (the identity.dpr is a test case)
 * Decide the need of the zhelpers.h
+* beter CTRL+C handling
+* improve lruqueue2.dpr ( in client task CTRL+C handling)
 
 Copying
 =======

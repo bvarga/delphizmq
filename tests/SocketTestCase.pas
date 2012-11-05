@@ -36,6 +36,7 @@ type
     procedure TestAcceptFilter;
 
     procedure TestMonitor;
+    procedure TestMonitorConnectDisconnect;
     {$else}
     procedure TestSwap;
     procedure TestRecoveryIvlMSec;
@@ -286,6 +287,51 @@ begin
       sleep(200);
     end;
   end;
+  CloseHandle( ehandle1 );
+  CloseHandle( ehandle2 );
+  Dispose( zmqEvent );
+end;
+
+procedure TSocketTestCase.TestMonitorConnectDisconnect;
+const
+  cAddr = 'tcp://127.0.0.1:5554';
+var
+  dealer: TZMQSocket;
+  i: Integer;
+begin
+  New( zmqEvent );
+  ehandle1 := CreateEvent( nil, true, false, nil );
+  ehandle2 := CreateEvent( nil, true, false, nil );
+
+  FZMQSocket := context.Socket( stRouter );
+  FZMQSocket.RegisterMonitor( MonitorEvent1 );
+  FZMQSocket.bind( cAddr );
+
+  WaitForSingleObject( ehandle1, INFINITE );
+  ResetEvent( ehandle1 );
+  CheckEquals( cAddr, zmqEvent.addr );
+  Check( zmqEvent.event = meListening );
+
+  for i := 0 to 10 do
+  begin
+    dealer := context.Socket( stDealer );
+    dealer.connect( cAddr );
+
+    WaitForSingleObject( ehandle1, INFINITE );
+    ResetEvent( ehandle1 );
+    CheckEquals( cAddr, zmqEvent.addr, 'connect, i : ' + IntToStr( i ) );
+    Check( zmqEvent.event = meAccepted, 'connect, i : ' + IntToStr( i ) );
+    sleep(100);
+
+    dealer.Free;
+    WaitForSingleObject( ehandle1, INFINITE );
+    ResetEvent( ehandle1 );
+    CheckEquals( cAddr, zmqEvent.addr, 'disconnect, i : ' + IntToStr( i ) );
+    Check( zmqEvent.event = meDisconnected, 'disconnect, i : ' + IntToStr( i ) );
+    sleep(100);
+  end;
+
+
   CloseHandle( ehandle1 );
   CloseHandle( ehandle2 );
   Dispose( zmqEvent );

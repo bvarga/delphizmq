@@ -165,6 +165,7 @@ type
   protected
     fSocket: Pointer;
     fContext: TZMQContext;
+    fThreadId: Cardinal;
   private
     fRaiseEAgain: Boolean;
     {$ifdef zmq3}
@@ -338,6 +339,7 @@ type
     fSockets: TList;
     cs: TRTLCriticalSection;
     fLinger: Integer;
+    fThreadId: Cardinal;
 
     {$ifdef zmq3}
     function getOption( option: Integer ): Integer;
@@ -400,7 +402,8 @@ type
   procedure ZMQDevice( device: TZMQDevice; insocket, outsocket: TZMQSocket );
   procedure ZMQVersion(var major, minor, patch: Integer);
 
-  function console_handler( dwCtrlType: DWORD ): BOOL; stdcall;
+  // for threadSafe logging to the console.
+  procedure ZMQNote( str: String );
 
 implementation
 
@@ -409,6 +412,17 @@ const
 
 var
   contexts: TList;
+  cs: TRTLCriticalSection;
+
+procedure ZMQNote( str: String );
+begin
+  EnterCriticalSection( cs );
+  Writeln( str );
+  LeaveCriticalSection( cs );
+end;
+
+function console_handler( dwCtrlType: DWORD ): BOOL; stdcall; forward;
+
 { EZMQException }
 
 constructor EZMQException.Create;
@@ -571,6 +585,7 @@ end;
 
 constructor TZMQSocket.Create;
 begin
+  fThreadId := Windows.GetCurrentThreadId;
   fRaiseEAgain := False;
   {$ifdef zmq3}
   fAcceptFilter := TStringList.Create;
@@ -1401,19 +1416,57 @@ begin
 end;
 
 // helpers. inspired by the zhelpers.h
+// not READY!
 procedure TZMQSocket.dump;
 var
-  tsl: TStringList;
-  i: Integer;
+  msg: TZMQMessage;
+  s: AnsiString;
+  i,l: Integer;
+  pac: PAnsiChar;
+  pwc: PWideChar;
+  b: BOOL;
 begin
+  msg := TZMQMessage.create;
   writeln('----------------------------------------');
-  tsl := TStringList.Create;
   try
-    recv( tsl );
-    for i := 0 to tsl.Count - 1 do
-      writeln( tsl[i] );
+    repeat
+      l := recv( msg, 0 );
+      i := 0;
+      pac := msg.data;
+      while ( i < l ) and ( Ord( PAnsiChar(pac + i )^ ) >=32 ) and
+        ( Ord( PAnsiChar(pac + i)^ ) <= 127 ) do Inc( i );
+      if i < l then
+      begin
+        // not AnsiString;
+        pac := msg.data;
+
+          i := Windows.MultiByteToWideChar( CP_UTF8, 8, pac, l, nil, 0 );
+          if i <> 0  then
+            Writeln('some Utf8')
+          else begin
+
+          // not unicode string.
+          pwc := msg.data;
+
+            b := false;
+            i := Windows.WideCharToMultiByte( CP_UTF8, 8, pwc, -1, nil, 0, nil, @b );
+            if i <> 0 then
+            Writeln('some Wide')
+            else
+
+            Writeln( 'Hex' );
+          
+
+          end;
+
+      end else
+      begin
+        SetString( s, PChar(msg.data), l );
+        Writeln( s );
+      end;
+    until not rcvMore;
   finally
-    tsl.Free;
+    msg.Free;
   end;
 end;
 
@@ -1421,6 +1474,7 @@ end;
 
 constructor TZMQContext.create{$ifndef zmq3}( io_threads: Integer ){$endif};
 begin
+  fThreadId := Windows.GetCurrentThreadId;
   fInterrupted := false;
   contexts.Add( Self );
   {$ifdef zmq3}
@@ -1443,8 +1497,15 @@ begin
   for i:= 0 to fSockets.Count - 1 do
     TZMQSocket(fSockets[i]).Linger := Linger;
 
-  while fSockets.Count > 0 do
-    TZMQSocket(fSockets[0]).Free;
+  // if Socket created in the same Thread, it's safe to
+  // terminate here. We assume that the context is terminated
+  // in the same Thread as it was created.
+  i := 0;
+  while i < fSockets.Count do
+  if TZMQSocket(fSockets[i]).fThreadId = fThreadId then
+    TZMQSocket(fSockets[i]).Free
+  else
+    Inc( i );
 
   {$ifdef zmq3}
   CheckResult( zmq_ctx_destroy( ContextPtr ) );
@@ -1637,9 +1698,11 @@ begin
 end;
 
 initialization
+  InitializeCriticalSection( cs );
   contexts := TList.Create;
   Windows.SetConsoleCtrlHandler( @console_handler, True );
 
 finalization
   contexts.Free;
+  DeleteCriticalSection( cs );
 end.

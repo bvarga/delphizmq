@@ -16,16 +16,6 @@ const
   NBR_CLIENTS = 10;
   NBR_WORKERS = 3;
 
-var
-  cs: TRTLCriticalSection;
-
-procedure Note( str: String );
-begin
-  EnterCriticalSection( cs );
-  Writeln( str );
-  LeaveCriticalSection( cs );
-end;
-
 //  Basic request-reply client using REQ socket
 //  Since s_send and s_recv can't handle 0MQ binary identities we
 //  set a printable text identity to allow routing.
@@ -45,7 +35,7 @@ begin
   //  Send request, get reply
   client.send( 'HELLO' );
   client.recv( reply );
-  Note( Format('Client: %s',[reply]) );
+  ZMQNote( Format('Client: %s',[reply]) );
 
   client.Free;
   context.Free;
@@ -85,7 +75,7 @@ begin
 
     //  Get request, send reply
     worker.recv( request );
-    Note( Format('Worker: %s',[request]) );
+    ZMQNote( Format('Worker: %s',[request]) );
 
     worker.send([
       address,
@@ -125,8 +115,6 @@ var
   , request: String;
 
 begin
-  InitializeCriticalSection( cs );
-
   //  Prepare our context and sockets
   context := TZMQContext.create;
   frontend := context.Socket( stRouter );
@@ -229,6 +217,5 @@ begin
   frontend.Free;
   backend.Free;
   context.Free;
-  DeleteCriticalSection( cs );
 end.
 

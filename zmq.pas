@@ -18,14 +18,22 @@
 }
 unit zmq;
 
+{$ifdef UNIX}
+  {$linklib pthread}
+{$endif}
+
 {$I zmq.inc}
 
 interface
 
 const
 {$ifdef zmq3}
+  {$ifdef UNIX}
+    libzmq = 'libzmq.so';
+  {$else}
   libzmq = 'libzmq3-x86-v100-mt.dll';
 //  libzmq = 'libzmq3-x86-v100-mt-gd.dll';
+  {$endif}
 {$else}
   libzmq = 'libzmq.dll';
 {$endif}

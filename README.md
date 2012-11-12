@@ -122,6 +122,15 @@ TODO
 * beter CTRL+C handling
 * improve lruqueue2.dpr ( in client task CTRL+C handling)
 
+Authors
+=======
+
+The following people have contributed to the project:
+
+Balazs Varga <bb.varga@gmail.com> 
+Stathis Gkotsis <stathis.gkotsis@gmail.com>
+Stephane Carre <scarre.lu@gmail.com>
+
 Copying
 =======
 

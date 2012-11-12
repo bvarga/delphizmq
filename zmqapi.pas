@@ -18,13 +18,21 @@
 }
 unit zmqapi;
 
+{$ifdef FPC}
+  {$mode delphi}{$H+}
+{$endif}
+
 {$I zmq.inc}
 
 interface
 
 uses
-    Windows
-  , Classes
+   {$ifdef UNIX}
+   BaseUnix,
+   {$else}
+   Windows,
+   {$endif}
+   Classes
   , SysUtils
   , zmq
   ;
@@ -421,7 +429,9 @@ begin
   LeaveCriticalSection( cs );
 end;
 
+{$ifndef UNIX}
 function console_handler( dwCtrlType: DWORD ): BOOL; stdcall; forward;
+{$endif}
 
 { EZMQException }
 
@@ -540,7 +550,10 @@ begin
 end;
 
 function TZMQMessage.send( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
+var
+  lsize: integer;
 begin
+  lsize := size;
   result := zmq_msg_send( fMessage, socket.SocketPtr, Byte( flags ) );
 
   if result < -1 then
@@ -553,7 +566,9 @@ begin
   end else
   begin
     {$ifdef debug}
-    if result <> size then
+    //cannot call size after calling zmq_msg_send because zmq_msg_t structure (fMessage) is nullified during the call
+    //if result <> size then
+    if result <> lsize then
       raise EZMQException.Create('return value of zmq_msg_send and msg size is not equal.');
     {$endif}
   end;
@@ -1131,8 +1146,11 @@ end;
 {$endif}
 
 function TZMQSocket.send( msg: TZMQMessage; flags: Integer = 0 ): Integer;
+var
+  lmsgsize: integer;
 begin
   {$ifdef zmq3}
+  lmsgsize := msg.size;
   result := zmq_sendmsg( SocketPtr, msg.fMessage, flags );
 
   if result < -1 then
@@ -1145,7 +1163,9 @@ begin
   end else
   begin
     {$ifdef debug}
-    if result <> msg.size then
+//    cannot call msg.size after calling zmq_sendmsg because zmq_msg_t structure (fMessage) is nullified during the call
+//    if result <> msg.size then
+    if result <> lmsgsize then
       raise EZMQException.Create('return value of zmq_sendmsg and msg size is not equal.');
     {$endif}
   end;
@@ -1268,7 +1288,11 @@ begin
       msgsize := socket.recv( msg, [] );
       if msgsize > -1 then
       begin
+        {$ifdef UNIX}
+          Move( msg.data^, event, SizeOf(event) );
+        {$else}
         CopyMemory( @event, msg.data, SizeOf(event) );
+        {$endif}
         i := 0;
         while event.event <> 0 do
         begin
@@ -1294,7 +1318,11 @@ end;
 
 procedure TZMQSocket.RegisterMonitor( proc: TZMQMonitorProc; events: TZMQMonitorEvents = cZMQMonitorEventsAll );
 var
+  {$ifdef UNIX}
+    tid: QWord;
+  {$else}
   tid: Cardinal;
+  {$endif}
 begin
   if fMonitorRec <> nil then
     DeRegisterMonitor;
@@ -1306,7 +1334,7 @@ begin
   fMonitorRec.Proc := proc;
 
   CheckResult( zmq_socket_monitor( SocketPtr,
-    PAnsiChar( AnsiString( fMonitorRec.Addr ) ), Word( events ) ) );
+    PAnsiChar( fMonitorRec.Addr ), Word( events ) ) );
 
   fMonitorThread := BeginThread( nil, 0, @MonitorProc, fMonitorRec, 0, tid );
   sleep(1);
@@ -1317,7 +1345,10 @@ procedure TZMQSocket.DeRegisterMonitor;
 var
   rc: Cardinal;
 begin
-
+  {$ifdef UNIX}
+    raise Exception.Create(Self.ClassName+'.DeRegisterMonitor not implemented');
+    { TODO : implement equivalent to WaitForSingleObject like pthread_join() ? }
+  {$else}
   if fMonitorRec <> nil then
   begin
     fMonitorRec.Terminated := True;
@@ -1328,6 +1359,7 @@ begin
     Dispose( fMonitorRec );
     fMonitorRec := nil;
   end;
+  {$endif}
 end;
 
 {$endif}
@@ -1485,7 +1517,6 @@ begin
   fLinger := -2;
   if ContextPtr = nil then
     raise EZMQException.Create;
-  InitializeCriticalSection( cs );
   fSockets := TList.Create;
 end;
 
@@ -1515,7 +1546,6 @@ begin
 
   fSockets.Free;
   contexts.Delete( contexts.IndexOf(Self) );
-  DeleteCriticalSection( cs );
   inherited;
 end;
 
@@ -1681,6 +1711,42 @@ begin
   zmq_version( major, minor, patch );
 end;
 
+{$ifdef UNIX}
+procedure InterruptContexts;
+var
+  i: Integer;
+begin
+  for i := 0 to contexts.Count - 1 do
+    TZMQContext(contexts[i]).fInterrupted := True;
+end;
+
+procedure HandleSignal(signum: longint; si: psiginfo; sc: PSigcontext); cdecl;
+begin
+  InterruptContexts;
+  Writeln('');
+  halt(0);
+end;
+
+procedure InstallSigHandler(sig: cint); cdecl;
+var
+  k : integer;
+  oa, na : PSigActionRec;
+begin
+  new(na);
+  new(oa);
+  na^.sa_handler := @HandleSignal;
+  fillchar(na^.sa_mask,sizeof(na^.sa_mask),#0);
+  na^.sa_flags := 0;
+  na^.sa_restorer := nil;
+  k := fpSigaction(sig,na,oa);
+  if k<>0 then
+    begin
+      Writeln('signal handler install error '+IntToStr(k)+' '+IntToStr(fpgeterrno));
+      halt(1);
+    end;
+end;
+
+{$else}
 function console_handler( dwCtrlType: DWORD ): BOOL;
 var
   i: Integer;
@@ -1696,13 +1762,29 @@ begin
     result := False;
   end;
 end;
+{$endif}
 
 initialization
+  {$ifdef UNIX}
+  InitCriticalSection( cs );
+  {$else}
   InitializeCriticalSection( cs );
+  {$endif}
   contexts := TList.Create;
+  {$ifdef UNIX}
+  { TODO : Signal handling should normally be installed at application level, not in library }
+  InstallSigHandler(SIGTERM);
+  InstallSigHandler(SIGINT);
+  {$else}
   Windows.SetConsoleCtrlHandler( @console_handler, True );
+  {$endif}
 
 finalization
   contexts.Free;
+  {$ifdef UNIX}
+  DoneCriticalSection( cs );
+  {$else}
   DeleteCriticalSection( cs );
+  {$endif}
+
 end.

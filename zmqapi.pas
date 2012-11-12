@@ -345,7 +345,6 @@ type
   private
     fContext: Pointer;
     fSockets: TList;
-    cs: TRTLCriticalSection;
     fLinger: Integer;
     fThreadId: Cardinal;
 
@@ -1755,7 +1754,7 @@ begin
   begin
     for i := 0 to contexts.Count - 1 do
       TZMQContext(contexts[i]).fInterrupted := True;
-    result := False;
+    result := True;
     // if I set to True than the app won't exit,
     // but it's not the solution.
   end else begin

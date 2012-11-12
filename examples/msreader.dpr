@@ -38,7 +38,7 @@ begin
     repeat
       task := TZMQMessage.create;
       try
-        receiver.recv( task, [rfNoBlock] );
+        receiver.recv( task, [rfDontWait] );
         rc := true;
       except
         rc := False;
@@ -53,7 +53,7 @@ begin
     repeat
       update := TZMQMessage.Create;
       Try
-        subscriber.recv( update, [rfNoBlock] );
+        subscriber.recv( update, [rfDontWait] );
         rc := true;
       except
         rc := False;

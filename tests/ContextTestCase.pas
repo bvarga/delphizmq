@@ -6,9 +6,15 @@ interface
 
 uses
 
-    TestFramework
+  {$ifdef fpc}
+  fpcunit, testutils, testregistry
+  {$else}
+  TestFramework
+  {$endif}
   , Classes
+  {$ifndef UNIX}
   , Windows
+  {$endif}
   , zmqapi
   , zmq
   ;
@@ -101,6 +107,10 @@ end;
 
 
 initialization
+  {$ifdef fpc}
+  RegisterTest(TContextTestCase);
+  {$else}
   RegisterTest(TContextTestCase.Suite);
+  {$endif}
 
 end.

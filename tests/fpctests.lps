@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="9"/>
+    <BuildModes Active="Default"/>
+    <Units Count="16">
+      <Unit0>
+        <Filename Value="fpctests.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="fpctests"/>
+        <EditorIndex Value="0"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="1"/>
+        <CursorPos X="1" Y="4"/>
+        <UsageCount Value="25"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="SocketTestCase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="SocketTestCase"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="197"/>
+        <CursorPos X="1" Y="338"/>
+        <UsageCount Value="25"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="ContextTestCase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ContextTestCase"/>
+        <EditorIndex Value="1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="7"/>
+        <CursorPos X="1" Y="115"/>
+        <UsageCount Value="25"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="PushPullTestCase.pas"/>
+        <UnitName Value="PushPullTestCase"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="7"/>
+        <CursorPos X="31" Y="7"/>
+        <UsageCount Value="23"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="../zmq.inc"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="1"/>
+        <CursorPos X="1" Y="1"/>
+        <UsageCount Value="23"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="../zmq.pas"/>
+        <UnitName Value="zmq"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="307"/>
+        <CursorPos X="21" Y="326"/>
+        <UsageCount Value="23"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="../zmqapi.pas"/>
+        <UnitName Value="zmqapi"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="110"/>
+        <CursorPos X="42" Y="125"/>
+        <UsageCount Value="23"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="Testzmqapi.pas"/>
+        <UnitName Value="Testzmqapi"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="4"/>
+        <CursorPos X="47" Y="4"/>
+        <UsageCount Value="20"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="/usr/share/fpcsrc/2.6.0/rtl/inc/systemh.inc"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="502"/>
+        <CursorPos X="11" Y="517"/>
+        <UsageCount Value="11"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="../../../zeromq-3.2.1/src/zmq.cpp"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="252"/>
+        <CursorPos X="1" Y="274"/>
+        <UsageCount Value="10"/>
+        <DefaultSyntaxHighlighter Value="C++"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="../../../zeromq-3.2.1/src/socket_base.cpp"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="288"/>
+        <CursorPos X="1" Y="303"/>
+        <UsageCount Value="10"/>
+        <DefaultSyntaxHighlighter Value="C++"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="../../../zeromq-3.2.1/src/options.cpp"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="323"/>
+        <CursorPos X="1" Y="340"/>
+        <UsageCount Value="10"/>
+        <DefaultSyntaxHighlighter Value="C++"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="/usr/share/fpcsrc/2.6.0/rtl/linux/system.pp"/>
+        <UnitName Value="System"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="1"/>
+        <CursorPos X="1" Y="1"/>
+        <UsageCount Value="10"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="../source/zmq.inc"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="1"/>
+        <CursorPos X="1" Y="1"/>
+        <UsageCount Value="21"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="../source/zmq.pas"/>
+        <UnitName Value="zmq"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="1"/>
+        <CursorPos X="1" Y="1"/>
+        <UsageCount Value="11"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="../source/zmqapi.pas"/>
+        <UnitName Value="zmqapi"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="559"/>
+        <CursorPos X="38" Y="590"/>
+        <UsageCount Value="11"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit15>
+    </Units>
+    <General>
+      <ActiveWindowIndexAtStart Value="0"/>
+    </General>
+    <JumpHistory Count="8" HistoryIndex="7">
+      <Position1>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="420" Column="9" TopLine="410"/>
+      </Position1>
+      <Position2>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="420" Column="9" TopLine="410"/>
+      </Position2>
+      <Position3>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="416" Column="36" TopLine="410"/>
+      </Position3>
+      <Position4>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="417" Column="15" TopLine="401"/>
+      </Position4>
+      <Position5>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="515" Column="71" TopLine="495"/>
+      </Position5>
+      <Position6>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="5" Column="2" TopLine="1"/>
+      </Position6>
+      <Position7>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="13" Column="98" TopLine="1"/>
+      </Position7>
+      <Position8>
+        <Filename Value="SocketTestCase.pas"/>
+        <Caret Line="5" Column="2" TopLine="1"/>
+      </Position8>
+    </JumpHistory>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints Count="1">
+      <Item1>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsGlobal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="../../../zeromq-3.2.1/src/zmq.cpp"/>
+        <Line Value="275"/>
+      </Item1>
+    </BreakPoints>
+  </Debugging>
+</CONFIG>

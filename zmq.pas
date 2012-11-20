@@ -26,13 +26,19 @@ unit zmq;
 
 interface
 
+{$ifdef FPC}
+uses
+  ctypes;
+{$endif}
+
 const
 {$ifdef zmq3}
   {$ifdef UNIX}
-    libzmq = 'libzmq.so';
+  libzmq = 'libzmq.so';
   {$else}
   libzmq = 'libzmq3-x86-v100-mt.dll';
 //  libzmq = 'libzmq3-x86-v100-mt-gd.dll';
+//  libzmq = 'libzmq_3_2_2_xp.dll';
   {$endif}
 {$else}
   libzmq = 'libzmq.dll';
@@ -158,7 +164,11 @@ type
 
   free_fn = procedure(data, hint: Pointer);
 
+{$ifdef FPC}  
+  size_t = clong;
+{$else}
   size_t = Cardinal;
+{$endif}
 
 function zmq_msg_init( var msg: zmq_msg_t ): Integer; cdecl; external libzmq;
 function zmq_msg_init_size( var msg: zmq_msg_t; size: size_t ): Integer; cdecl; external libzmq;
@@ -323,7 +333,7 @@ type
 function zmq_socket(context: Pointer; stype: Integer): Pointer; cdecl; external libzmq;
 function zmq_close(s: Pointer): Integer; cdecl; external libzmq;
 function zmq_setsockopt(s: Pointer; option: Integer; optval: Pointer; optvallen: size_t ): Integer; cdecl; external libzmq;
-function zmq_getsockopt(s: Pointer; option: Integer; optval: Pointer; var optvallen: Cardinal): Integer; cdecl; external libzmq;
+function zmq_getsockopt(s: Pointer; option: Integer; optval: Pointer; var optvallen: size_t): Integer; cdecl; external libzmq;
 function zmq_bind(s: Pointer; addr: PAnsiChar): Integer; cdecl; external libzmq;
 function zmq_connect(s: Pointer; addr: PAnsiChar): Integer; cdecl; external libzmq;
 {$ifdef zmq3}

@@ -6,9 +6,15 @@ interface
 
 uses
 
-    TestFramework
+  {$ifdef fpc}
+  fpcunit, testutils, testregistry
+  {$else}
+  TestFramework
+  {$endif}
   , Classes
+  {$ifndef UNIX}
   , Windows
+  {$endif}
   , zmqapi
   ;
 
@@ -19,8 +25,10 @@ type
     context: TZMQContext;
     FZMQSocket: TZMQSocket;
     {$ifdef zmq3}
+    {$ifndef UNIX}
     procedure MonitorEvent1( event: TZMQEvent );
     procedure MonitorEvent2( event: TZMQEvent );
+    {$endif}
     {$endif}
   public
     procedure SetUp; override;
@@ -35,8 +43,10 @@ type
     procedure TestLastEndpoint;
     procedure TestAcceptFilter;
 
+    {$ifndef UNIX}
     procedure TestMonitor;
     procedure TestMonitorConnectDisconnect;
+    {$endif}
     {$else}
     procedure TestSwap;
     procedure TestRecoveryIvlMSec;
@@ -238,6 +248,7 @@ begin
   end;
 end;
 
+{$ifndef UNIX}
 procedure TSocketTestCase.MonitorEvent1( event: TZMQEvent );
 begin
   zmqEvent^ := event;
@@ -336,6 +347,7 @@ begin
   CloseHandle( ehandle2 );
   Dispose( zmqEvent );
 end;
+{$endif}
 
 {$else}
 
@@ -536,7 +548,9 @@ begin
   begin
     FZMQSocket := context.Socket( st );
     try
-      CheckEquals( -1, FZMQSocket.Linger, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      //CheckEquals( -1, FZMQSocket.Linger, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      //Writeln('Socket type: '+IntToStr(ord(st))+' Default Linger: '+IntToStr(FZMQSocket.Linger));
+      CheckTrue( (FZMQSocket.Linger = -1) or (FZMQSocket.Linger = 0), 'Default check for socket type: ' + IntToStr( Ord( st ) ) +' ('+IntToStr(FZMQSocket.Linger)+')');
       FZMQSocket.Linger := 1024;
       CheckEquals( 1024, FZMQSocket.Linger );
     finally
@@ -706,5 +720,9 @@ begin
 end;
 
 initialization
+  {$ifdef fpc}
+  RegisterTest(TSocketTestCase);
+  {$else}
   RegisterTest(TSocketTestCase.Suite);
+  {$endif}
 end.

@@ -38,6 +38,10 @@ uses
   ;
 
 
+const
+  ZMQEAGAIN = 11;
+
+
 type
   {$ifdef zmq3}
   TZMQMonitorEvent = (
@@ -413,9 +417,6 @@ type
   procedure ZMQNote( str: String );
 
 implementation
-
-const
-  ZMQEAGAIN = 11;
 
 var
   contexts: TList;
@@ -1429,14 +1430,18 @@ function TZMQSocket.recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer;
 var
   s: String;
   bRcvMore: Boolean;
+  rc: Integer;
 begin
   bRcvMore := True;
   result := 0;
   while bRcvMore do
   begin
-    recv( s, flags );
+    rc := recv( s, flags );
+    if rc <> -1 then
+    begin
     msg.Add( s );
     inc( result );
+    end;
     bRcvMore := RcvMore;
   end;
 end;

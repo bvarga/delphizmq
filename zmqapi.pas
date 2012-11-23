@@ -1452,14 +1452,18 @@ function TZMQSocket.recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer;
 var
   s: String;
   bRcvMore: Boolean;
+  rc: Integer;
 begin
   bRcvMore := True;
   result := 0;
   while bRcvMore do
   begin
-    recv( s, flags );
-    msg.Add( s );
-    inc( result );
+    rc := recv( s, flags );
+    if rc <> -1 then
+    begin
+      msg.Add( s );
+      inc( result );
+    end;
     bRcvMore := RcvMore;
   end;
 end;

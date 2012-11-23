@@ -31,7 +31,7 @@ const
   {$ifdef UNIX}
     libzmq = 'libzmq.so';
   {$else}
-  libzmq = 'libzmq3-x86-v100-mt.dll';
+  libzmq = 'libzmq3-x86.dll';
 //  libzmq = 'libzmq3-x86-v100-mt-gd.dll';
   {$endif}
 {$else}

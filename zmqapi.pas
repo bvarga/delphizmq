@@ -38,6 +38,12 @@ uses
   ;
 
 
+const
+  ZMQEAGAIN = 11;
+  {$ifdef UNIX}
+  ZMQEINTR = ESysEINTR;
+  {$endif}
+
 type
   {$ifdef zmq3}
   TZMQMonitorEvent = (
@@ -423,9 +429,6 @@ type
   procedure ZMQNote( str: String );
 
 implementation
-
-const
-  ZMQEAGAIN = 11;
 
 var
   contexts: TList;
@@ -1395,7 +1398,7 @@ begin
   begin
     errn := zmq_errno;
 
-    if (errn = ETERM) {$ifdef UNIX}or (errn = ESysEINTR){$endif} then
+    if (errn = ETERM) {$ifdef UNIX}or (errn = ZMQEINTR){$endif} then
       close
     else if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
       raise EZMQException.Create( errn );

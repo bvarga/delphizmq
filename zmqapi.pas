@@ -1725,6 +1725,7 @@ begin
     result := True;
     // if I set to True than the app won't exit,
     // but it's not the solution.
+    // ZMQTerminate;
   end else begin
     result := False;
   end;

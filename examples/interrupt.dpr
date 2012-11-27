@@ -30,8 +30,11 @@ begin
       //  Blocking read will exit on a signal
       // it's not true on windows. :(
       msg := TZMQMessage.Create;
-      socket.recv( msg );
-
+      try
+        socket.recv( msg );
+      except
+      end;
+      
       if socket.context.Terminated then
       begin
         Writeln( 'W: interrupt received, killing server...');

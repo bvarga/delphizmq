@@ -121,8 +121,6 @@ type
     function size: size_t;
     {$ifdef zmq3}
     function more: Boolean;
-    function send( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
-    function recv( socket: TZMQSocket; flags: TZMQRecvFlags = [] ): Integer;
     {$endif}
   end;
 
@@ -192,7 +190,6 @@ type
     fMonitorRec: PZMQMonitorRec;
     fMonitorThread: THandle;
     {$endif}
-    function getTerminated: Boolean;
     procedure close;
     procedure setSockOpt( option: Integer; optval: Pointer; optvallen: size_t );
     procedure getSockOpt( option: Integer; optval: Pointer; var optvallen: size_t );
@@ -348,8 +345,8 @@ type
     property FD: Pointer read getFD;
     property Events: TZMQPollEvents read getEvents;
 
+    property Context: TZMQContext read fContext;
     property SocketPtr: Pointer read fSocket;
-    property Terminated: Boolean read getTerminated;
     property RaiseEAgain: Boolean read fRaiseEAgain write fRaiseEAgain;
   end;
 
@@ -358,11 +355,6 @@ type
     fContext: Pointer;
     fSockets: TList;
     fLinger: Integer;
-    {$ifdef FPC}
-    fThreadId: TThreadID;
-    {$else}
-    fThreadId: Cardinal;
-    {$endif}
 
     {$ifdef zmq3}
     function getOption( option: Integer ): Integer;
@@ -373,7 +365,7 @@ type
     procedure setMaxSockets( const Value: Integer );
     {$endif}
   protected
-    fInterrupted: Boolean;
+    fTerminated: Boolean;
     procedure CheckResult( rc: Integer );
     procedure RemoveSocket( lSocket: TZMQSocket );
 
@@ -381,10 +373,12 @@ type
     constructor create{$ifndef zmq3}( io_threads: Integer = 1 ){$endif};
     destructor Destroy; override;
     function Socket( stype: TZMQSocketType ): TZMQSocket;
+    procedure Terminate;
     property ContextPtr: Pointer read fContext;
+
     //  < -1 means dont change linger when destroy
     property Linger: Integer read fLinger write fLinger;
-    property Interrupted: Boolean read fInterrupted;
+    property Terminated: Boolean read fTerminated;
     {$ifdef zmq3}
     property IOThreads: Integer read getIOThreads write setIOThreads;
     property MaxSockets: Integer read getMaxSockets write setMaxSockets;
@@ -424,6 +418,8 @@ type
 
   procedure ZMQDevice( device: TZMQDevice; insocket, outsocket: TZMQSocket );
   procedure ZMQVersion(var major, minor, patch: Integer);
+
+  procedure ZMQTerminate;
 
   // for threadSafe logging to the console.
   procedure ZMQNote( str: String );
@@ -561,54 +557,6 @@ begin
     raise EZMQException.Create( 'zmq_msg_more return value undefined!' );
 end;
 
-function TZMQMessage.send( socket: TZMQSocket; flags: TZMQSendFlags = [] ): Integer;
-//var
-//  lsize: integer;
-begin
-  result := socket.send( Self, flags );
-  //lsize := size;
-  //result := zmq_msg_send( fMessage, socket.SocketPtr, Byte( flags ) );
-  //
-  //if result < -1 then
-  //  raise EZMQException.Create('zmq_msg_send return value less than -1.')
-  //else if result = -1 then
-  //begin
-  //  if zmq_errno = ETERM then
-  //    socket.close;
-  //  raise EZMQException.Create;
-  //end else
-  //begin
-  //  {$ifdef debug}
-  //  //cannot call size after calling zmq_msg_send because zmq_msg_t structure (fMessage) is nullified during the call
-  //  //if result <> size then
-  //  if result <> lsize then
-  //    raise EZMQException.Create('return value of zmq_msg_send and msg size is not equal.');
-  //  {$endif}
-  //end;
-end;
-
-function TZMQMessage.recv( socket: TZMQSocket; flags: TZMQRecvFlags = [] ): Integer;
-begin
-  rebuild;
-  result := socket.recv( Self, flags );
-  //{ TODO zmq_msg_recv is deprecated }
-  //result := zmq_msg_recv( fMessage, socket.SocketPtr, Byte( flags ) );
-  //if result < -1 then
-  //  raise EZMQException.Create('zmq_recvmsg return value less than -1.')
-  //else if result = -1 then
-  //begin
-  //  if (zmq_errno = ETERM){$ifdef UNIX} or (zmq_errno = ESysEINTR){$endif} then
-  //    socket.close;
-  //  { TODO Do we need to handle ZMQEAGAIN ? }
-  //  raise EZMQException.Create;
-  //end else
-  //begin
-  //  {$ifdef debug}
-  //  if result <> size then
-  //    raise EZMQException.Create('return value of zmq_msg_recv and msg size is not equal.');
-  //  {$endif}
-  //end;
-end;
 {$endif}
 
 { TZMQSocket }
@@ -650,21 +598,12 @@ begin
 end;
 
 procedure TZMQSocket.CheckResult( rc: Integer );
-var
-  errn: Integer;
 begin
-  if rc = 0 then
-  begin
-  // ok
-  end else
   if rc = -1 then
   begin
-    errn := zmq_errno;
-    case errn of
-     ETERM: close;
-    end;
-    raise EZMQException.Create( errn );
+    raise EZMQException.Create;
   end else
+  if rc <> 0 then
     raise EZMQException.Create('Function result is not 0, or -1!');
 end;
 
@@ -1159,39 +1098,33 @@ begin
   if result < -1 then
     raise EZMQException.Create('zmq_send return value less than -1.')
   else if result = -1 then
-  begin
-    if zmq_errno = ETERM then
-      close;
     raise EZMQException.Create;
-  end;
 end;
 {$endif}
 
 function TZMQSocket.send( msg: TZMQMessage; flags: Integer = 0 ): Integer;
+{$ifdef debug}
 var
   lmsgsize: integer;
+{$endif}
 begin
   {$ifdef zmq3}
+  {$ifdef debug}
   lmsgsize := msg.size;
+  {$endif}
   result := zmq_sendmsg( SocketPtr, msg.fMessage, flags );
+  //result := zmq_msg_send( msg.fMessage, SocketPtr, flags );
 
   if result < -1 then
     raise EZMQException.Create('zmq_sendmsg return value less than -1.')
   else if result = -1 then
-  begin
-    if zmq_errno = ETERM then
-      close;
-    raise EZMQException.Create;
-  end else
-  begin
+    raise EZMQException.Create
+  else begin
     {$ifdef debug}
-//    cannot call msg.size after calling zmq_sendmsg because zmq_msg_t structure (fMessage) is nullified during the call
-//    if result <> msg.size then
     if result <> lmsgsize then
       raise EZMQException.Create('return value of zmq_sendmsg and msg size is not equal.');
     {$endif}
   end;
-
   {$else}
   CheckResult( zmq_send( SocketPtr, msg.fMessage, flags ) );
   result := msg.size;
@@ -1283,11 +1216,7 @@ begin
   if result < -1 then
     raise EZMQException.Create('zmq_recv return value less than -1.')
   else if result = -1 then
-  begin
-    if zmq_errno = ETERM then
-      close;
     raise EZMQException.Create;
-  end;
 end;
 
 procedure MonitorProc( ZMQMonitorRec: PZMQMonitorRec );
@@ -1392,15 +1321,13 @@ var
 begin
   {$ifdef zmq3}
   result := zmq_recvmsg( SocketPtr, msg.fMessage, flags );
+  // result := zmq_msg_recv( msg.fMessage, SocketPtr, flags );
   if result < -1 then
     raise EZMQException.Create('zmq_recvmsg return value less than -1.')
   else if result = -1 then
   begin
     errn := zmq_errno;
-
-    if (errn = ETERM) {$ifdef UNIX}or (errn = ZMQEINTR){$endif} then
-      close
-    else if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
+    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
       raise EZMQException.Create( errn );
   end else
   begin
@@ -1468,11 +1395,6 @@ begin
   end;
 end;
 
-function TZMQSocket.getTerminated: Boolean;
-begin
-  result := SocketPtr = nil;
-end;
-
 {$ifndef UNIX}
 // helpers. inspired by the zhelpers.h
 // not READY!
@@ -1534,12 +1456,7 @@ end;
 
 constructor TZMQContext.create{$ifndef zmq3}( io_threads: Integer ){$endif};
 begin
-  {$ifdef FPC}
-  fThreadId := GetCurrentThreadId;
-  {$else}
-  fThreadId := Windows.GetCurrentThreadId;
-  {$endif}
-  fInterrupted := false;
+  fTerminated := false;
   contexts.Add( Self );
   {$ifdef zmq3}
   fContext := zmq_ctx_new;
@@ -1555,14 +1472,25 @@ end;
 destructor TZMQContext.destroy;
 var
   i: Integer;
+  {$ifdef FPC}
+  fThreadId: TThreadID;
+  {$else}
+  fThreadId: Cardinal;
+  {$endif}
+
 begin
   if fLinger >= -1 then
   for i:= 0 to fSockets.Count - 1 do
     TZMQSocket(fSockets[i]).Linger := Linger;
 
   // if Socket created in the same Thread, it's safe to
-  // terminate here. We assume that the context is terminated
-  // in the same Thread as it was created.
+  // terminate here.
+  {$ifdef FPC}
+  fThreadId := GetCurrentThreadId;
+  {$else}
+  fThreadId := Windows.GetCurrentThreadId;
+  {$endif}
+
   i := 0;
   while i < fSockets.Count do
   if TZMQSocket(fSockets[i]).fThreadId = fThreadId then
@@ -1570,6 +1498,7 @@ begin
   else
     Inc( i );
 
+  Terminate;
   {$ifdef zmq3}
   CheckResult( zmq_ctx_destroy( ContextPtr ) );
   {$else}
@@ -1579,6 +1508,11 @@ begin
   fSockets.Free;
   contexts.Delete( contexts.IndexOf(Self) );
   inherited;
+end;
+
+procedure TZMQContext.Terminate;
+begin
+  fTerminated := true;
 end;
 
 procedure TZMQContext.CheckResult( rc: Integer );
@@ -1749,7 +1683,7 @@ var
   i: Integer;
 begin
   for i := 0 to contexts.Count - 1 do
-    TZMQContext(contexts[i]).fInterrupted := True;
+    TZMQContext(contexts[i]).fTerminated := True;
 end;
 
 procedure HandleSignal(signum: longint; si: psiginfo; sc: PSigcontext); cdecl;
@@ -1787,7 +1721,7 @@ begin
   if CTRL_C_EVENT = dwCtrlType then
   begin
     for i := 0 to contexts.Count - 1 do
-      TZMQContext(contexts[i]).fInterrupted := True;
+      TZMQContext(contexts[i]).fTerminated := True;
     result := True;
     // if I set to True than the app won't exit,
     // but it's not the solution.
@@ -1796,6 +1730,16 @@ begin
   end;
 end;
 {$endif}
+
+procedure ZMQTerminate;
+var
+  i: Integer;
+begin
+  for i := 0 to contexts.Count - 1 do
+    TZMQContext(contexts[i]).fTerminated := True;
+  while contexts.Count > 0 do
+    TZMQContext(contexts[contexts.Count-1]).Free;
+end;
 
 initialization
   {$ifdef UNIX}
@@ -1806,8 +1750,8 @@ initialization
   contexts := TList.Create;
   {$ifdef UNIX}
   { TODO : Signal handling should normally be installed at application level, not in library }
-  //InstallSigHandler(SIGTERM);
-  //InstallSigHandler(SIGINT);
+  InstallSigHandler(SIGTERM);
+  InstallSigHandler(SIGINT);
   {$else}
   Windows.SetConsoleCtrlHandler( @console_handler, True );
   {$endif}

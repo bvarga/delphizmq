@@ -21,7 +21,9 @@ begin
   context := TZMQContext.Create;
   socket := Context.Socket( stRep );
   socket.bind( 'tcp://*:5555' );
-
+  {$ifndef unix}
+  socket.RcvTimeout := 20;
+  {$endif}
   while True do
   begin
 
@@ -30,11 +32,12 @@ begin
       msg := TZMQMessage.Create;
       socket.recv( msg );
 
-      if context.Interrupted then
+      if socket.context.Terminated then
       begin
         Writeln( 'W: interrupt received, killing server...');
         break;
       end;
+
   end;
   socket.Free;
   context.Free;

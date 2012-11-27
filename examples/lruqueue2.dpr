@@ -30,7 +30,7 @@ begin
   client.connect( 'tcp://127.0.0.1:5555' );
 
   //  Send request, get reply
-  while not context.Interrupted do
+  while not context.Terminated do
   begin
     client.send( 'HELLO' );
     client.recv( reply );
@@ -59,7 +59,7 @@ begin
   worker.send( LRU_READY );
 
   //  Process messages as they arrive
-  while not context.Interrupted do
+  while not context.Terminated do
   begin
     msg.Clear;
     worker.recv( msg );
@@ -113,7 +113,7 @@ begin
   poller.regist( backend, [pePollIn] );
   poller.regist( frontend, [pePollIn] );
 
-  while not context.Interrupted do
+  while not context.Terminated do
   begin
 
      //  Poll frontend only if we have available workers

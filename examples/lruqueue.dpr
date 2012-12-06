@@ -103,7 +103,7 @@ var
 
     poller: TZMQPoller;
     prc: Integer;
-    pr: TZMQPollResult;
+    pr: TZMQPollItem;
 
     //  Queue of available workers
     available_workers: Integer = 0;
@@ -123,7 +123,7 @@ begin
   backend.bind( 'tcp://127.0.0.1:5556' );
 
   sleep(100);
-  
+
   for i := 0 to NBR_CLIENTS - 1 do
     BeginThread( nil, 0, @client_task, nil, 0, tid );
   client_nbr := NBR_CLIENTS;
@@ -141,9 +141,9 @@ begin
   //  re-queue that worker, and we forward the reply to the original client,
   //  using the address envelope.
 
-  poller := TZMQPoller.Create;
-  poller.regist( backend, [pePollIn] );
-  poller.regist( frontend, [pePollIn] );
+  poller := TZMQPoller.Create( true );
+  poller.register( backend, [pePollIn] );
+  poller.register( frontend, [pePollIn] );
   while client_nbr > 0 do
   begin
 
@@ -158,7 +158,7 @@ begin
       pr := poller.pollResult[i];
 
       //  Handle worker activity on backend
-      if ( pePollIn in pr.revents ) and ( pr.socket = backend ) then
+      if ( pePollIn in pr.events ) and ( pr.socket = backend ) then
       begin
         //  Queue worker address for LRU routing
         backend.recv( worker_addr );
@@ -189,7 +189,7 @@ begin
         end;
       end else
       //  Here is how we handle a client request:
-      if ( pePollIn in pr.revents ) and ( pr.socket = frontend ) then
+      if ( pePollIn in pr.events ) and ( pr.socket = frontend ) then
       begin
         //  Now get next client request, route to LRU worker
         //  Client request is [address][empty][request]

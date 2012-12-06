@@ -17,7 +17,7 @@ var
   controller: TZMQSocket;
   s: String;
   poller: TZMQPoller;
-  pr: TZMQPollResult;
+  pr: TZMQPollItem;
   i,pc: Integer;
   b: Boolean;
 begin
@@ -36,9 +36,9 @@ begin
   controller.connect( 'tcp://localhost:5559' );
   controller.subscribe('');
 
-  poller := TZMQPoller.Create;
-  poller.regist( receiver, [pePollIn] );
-  poller.regist( controller, [pePollIn] );
+  poller := TZMQPoller.Create( true );
+  poller.register( receiver, [pePollIn] );
+  poller.register( controller, [pePollIn] );
 
   //  Process tasks forever
   while b do

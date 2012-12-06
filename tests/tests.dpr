@@ -22,7 +22,8 @@ uses
   TextTestRunner,
   SocketTestCase in 'SocketTestCase.pas',
   ContextTestCase in 'ContextTestCase.pas',
-  PushPullTestCase in 'PushPullTestCase.pas';
+  PushPullTestCase in 'PushPullTestCase.pas',
+  PollTestCase in 'PollTestCase.pas';
 
 {$R *.RES}
 

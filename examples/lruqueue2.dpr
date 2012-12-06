@@ -84,7 +84,7 @@ var
 
     poller: TZMQPoller;
     prc: Integer;
-    pr: TZMQPollResult;
+    pr: TZMQPollItem;
 
     //  Queue of available workers
     worker_queue: TStringList;
@@ -109,9 +109,9 @@ begin
 
   msg := TStringList.create;
   worker_queue := TStringList.Create;
-  poller := TZMQPoller.Create;
-  poller.regist( backend, [pePollIn] );
-  poller.regist( frontend, [pePollIn] );
+  poller := TZMQPoller.Create( true );
+  poller.register( backend, [pePollIn] );
+  poller.register( frontend, [pePollIn] );
 
   while not context.Terminated do
   begin
@@ -127,7 +127,7 @@ begin
       pr := poller.pollResult[i];
       msg.clear;
       //  Handle worker activity on backend
-      if ( pePollIn in pr.revents ) and ( pr.socket = backend ) then
+      if ( pePollIn in pr.events ) and ( pr.socket = backend ) then
       begin
         backend.recv( msg );
         Assert( worker_queue.Count < NBR_WORKERS );
@@ -144,7 +144,7 @@ begin
         end;
       end else
       //  Here is how we handle a client request:
-      if ( pePollIn in pr.revents ) and ( pr.socket = frontend ) then
+      if ( pePollIn in pr.events ) and ( pr.socket = frontend ) then
       begin
         //  Now get next client request, route to LRU worker
         //  Client request is [address][empty][request]

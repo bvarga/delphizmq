@@ -390,28 +390,62 @@ type
 
   TZMQFree = zmq.free_fn;
 
-  TZMQPollResult = record
+  TZMQPollItem = record
     socket: TZMQSocket;
-    revents: TZMQPollEvents;
+    events: TZMQPollEvents;
   end;
 
-  TZMQPollItem = zmq.pollitem_t;
-  TZMQPollItemA = array of TZMQPollItem;
-
-  TZMQPoller = class
+  TZMQPollEventProc = procedure( socket: TZMQSocket; event: TZMQPollEvents ) of object;
+  TZMQExceptionProc = procedure( exception: Exception ) of object;
+  TZMQPoller = class( TThread )
   private
-    fSockets: TList;
-    fPollItems: TZMQPollItemA;
+    fContext: TZMQContext;
+    fOwnContext: Boolean;
+    sPair: TZMQSocket;
+    fAddr: String;
+
+    fPollItem: array of zmq.pollitem_t;
+    fPollSocket: array of TZMQSocket;
+    fPollItemCapacity,
     fPollItemCount: Integer;
-    function getPollResult(indx: Integer): TZMQPollResult;
+
+    fTimeOut: Integer;
+
+    fPollNumber: Integer;
+
+    cs: TRTLCriticalSection;
+    fSync: Boolean;
+
+    fonException: TZMQExceptionProc;
+    fonTimeOut: TNotifyEvent;
+    fonEvent: TZMQPollEventProc;
+    function getPollItem(indx: Integer): TZMQPollItem;
+
+    procedure CheckResult( rc: Integer );
+
+    procedure AddToPollItems( socket: TZMQSocket; events: TZMQPollEvents );
+    procedure DelFromPollItems( socket: TZMQSocket; events: TZMQPollEvents; indx: Integer );
+
+    function getPollResult(indx: Integer): TZMQPollItem;
+  protected
+    procedure Execute; override;
   public
-    constructor Create;
+    constructor Create( lSync: Boolean = false; lContext: TZMQContext = nil );
     destructor Destroy; override;
 
-    procedure regist( socket: TZMQSocket; events: TZMQPollEvents );
-    function poll( timeout: Longint = -1; pollCount: Integer = -1 ): Integer;
+    procedure Register( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
+    procedure Deregister( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
+    procedure setPollNumber( const Value: Integer; bSync: Boolean = false );
 
-    property pollResult[indx: Integer]: TZMQPollResult read getPollResult;
+    function poll( timeout: Longint = -1; lPollNumber: Integer = -1 ): Integer;
+    property pollResult[indx: Integer]: TZMQPollItem read getPollResult;
+
+    property PollNumber: Integer read fPollNumber;
+    property PollItem[indx: Integer]: TZMQPollItem read getPollItem;
+
+    property onEvent: TZMQPollEventProc read fonEvent write fonEvent;
+    property onException: TZMQExceptionProc read fonException write fonException;
+    property onTimeOut: TNotifyEvent read fonTimeOut write fonTimeOut;
   end;
 
   TZMQDevice = ( dStreamer, dForwarder, dQueue );
@@ -1600,70 +1634,388 @@ begin
 end;
 
 
-{ TZMQPoll }
 const
-  fPollItemArrayInc = 10;
+  cZMQPoller_Register = 'reg';
+  cZMQPoller_SyncRegister = 'syncreg';
+  cZMQPoller_DeRegister = 'dereg';
+  cZMQPoller_SyncDeRegister = 'syncdereg';
+  cZMQPoller_Terminate = 'term';
 
-constructor TZMQPoller.Create;
+  cZMQPoller_PollNumber = 'pollno';
+  cZMQPoller_SyncPollNumber = 'syncpollno';
+
+{ TZMQPoller }
+
+constructor TZMQPoller.Create( lSync: Boolean = false; lContext: TZMQContext = nil );
 begin
+  fSync := lSync;
+  {$ifdef UNIX}
+  InitCriticalSection( cs );
+  {$else}
+  InitializeCriticalSection( cs );
+  {$endif}
+
+  fonException := nil;
+
+  if not fSync then
+  begin
+    fOwnContext := lContext = nil;
+    if fOwnContext then
+      fContext := TZMQContext.create
+    else
+      fContext := lContext;
+
+    fAddr := 'inproc://poller' + IntToHex( Integer( Self ), 8 );
+    sPair := fContext.Socket( stPair );
+    sPair.bind( fAddr );
+  end;
+
+  fPollItemCapacity := 10;
   fPollItemCount := 0;
-  fSockets := TList.Create;
+  fPollNumber := 0;
+
+  SetLength( fPollItem, fPollItemCapacity );
+  SetLength( fPollSocket, fPollItemCapacity );
+
+  fTimeOut := -1;
+  inherited Create( fSync );
 end;
 
 destructor TZMQPoller.Destroy;
 begin
-  fPollItems := nil;
-  fSockets.Free;
+  if not fSync then
+  begin
+    sPair.send( cZMQPoller_Terminate );
+    sPair.Free;
+    if fOwnContext then
+      fContext.Free;
+  end;
+
+
+  {$ifdef UNIX}
+  DoneCriticalSection( cs );
+  {$else}
+  DeleteCriticalSection( cs );
+  {$endif}
   inherited;
 end;
 
-procedure TZMQPoller.regist( socket: TZMQSocket; events: TZMQPollEvents );
+procedure TZMQPoller.CheckResult( rc: Integer );
 begin
-  if fPollItemCount = Length( fPollItems ) then
-    SetLength( fPollItems, fPollItemCount + fPollItemArrayInc );
-  fPollItems[fPollItemCount].socket := socket.SocketPtr;
-  fPollItems[fPollItemCount].fd := 0;
-  fPollItems[fPollItemCount].events := Byte( events );
-  fPollItems[fPollItemCount].revents := 0;
-  Inc( fPollItemCount );
-  fSockets.Add( socket );
+  if rc = -1 then
+    raise EZMQException.Create else
+  if rc < -1 then
+    raise EZMQException.Create('Function result is less than -1!');
+end;
+
+procedure TZMQPoller.AddToPollItems( socket: TZMQSocket; events: TZMQPollEvents );
+begin
+  EnterCriticalSection( cs );
+  try
+    if fPollItemCapacity = fPollItemCount then
+    begin
+      fPollItemCapacity := fPollItemCapacity + 10;
+      SetLength( fPollItem, fPollItemCapacity );
+      SetLength( fPollSocket, fPollItemCapacity );
+    end;
+    fPollSocket[fPollItemCount] := socket;
+    fPollItem[fPollItemCount].socket := socket.SocketPtr;
+    fPollItem[fPollItemCount].fd := 0;
+    fPollItem[fPollItemCount].events := Byte( events );
+    fPollItem[fPollItemCount].revents := 0;
+    fPollItemCount := fPollItemCount + 1;
+    fPollNumber := fPollItemCount;
+  finally
+    LeaveCriticalSection( cs );
+  end;
+end;
+
+procedure TZMQPoller.DelFromPollItems( socket: TZMQSocket; events: TZMQPollEvents; indx: Integer );
+var
+  i: Integer;
+begin
+  EnterCriticalSection( cs );
+  try
+    fPollItem[indx].events := fPollItem[indx].events and not Byte( events );
+    if fPollItem[indx].events = 0 then
+    begin
+      for i := indx to fPollItemCount - 2 do
+      begin
+        fPollItem[i] := fPollItem[i + 1];
+        fPollSocket[i] := fPollSocket[i + 1];
+      end;
+      Dec( fPollItemCount );
+    end;
+  finally
+    LeaveCriticalSection( cs );
+  end;
+end;
+
+function TZMQPoller.getPollItem( indx: Integer ): TZMQPollItem;
+begin
+  EnterCriticalSection( cs );
+  try
+    result.socket := fPollSocket[indx];
+    Byte(result.events) := fPollItem[indx].events;
+  finally
+    LeaveCriticalSection( cs );
+  end;
+end;
+
+type
+  TTempRec = record
+    socket: TZMQSocket;
+    events: TZMQPollEvents;
+    reg,           // true if reg, false if dereg.
+    sync: Boolean; // if true, socket should send back a message
+  end;
+
+procedure TZMQPoller.Execute;
+var
+  sPairThread: TZMQSocket;
+  rc: Integer;
+  i,j: Integer;
+  pes: TZMQPollEvents;
+  msg: TStringList;
+
+  reglist: Array of TTempRec;
+  reglistcap,
+  reglistcount: Integer;
+
+procedure AddToRegList( so: TZMQSocket; ev: TZMQPollEvents; reg: Boolean; sync: Boolean );
+begin
+  if reglistcap = reglistcount then
+  begin
+    reglistcap := reglistcap + 10;
+    SetLength( reglist, reglistcap );
+  end;
+  reglist[reglistcount].socket := so;
+  reglist[reglistcount].events := ev;
+  reglist[reglistcount].reg := reg;
+  reglist[reglistcount].sync := sync;
+  inc( reglistcount );
+end;
+
+begin
+  reglistcap := 10;
+  reglistcount := 0;
+  SetLength( reglist, reglistcap );
+
+  sPairThread := fContext.Socket( stPair );
+  sPairThread.connect( fAddr );
+
+  fPollItemCount := 1;
+  fPollNumber := 1;
+
+  fPollSocket[0] := sPairThread;
+  fPollItem[0].socket := sPairThread.SocketPtr;
+  fPollItem[0].fd := 0;
+  pes := [pePollIn];
+  fPollItem[0].events := Byte( pes );
+  fPollItem[0].revents := 0;
+
+  msg := TStringList.Create;
+
+  while not Terminated do
+  try
+    rc := zmq_poll( fPollItem[0], fPollNumber, fTimeOut );
+    CheckResult( rc );
+
+    if rc = 0 then
+    begin
+      if Assigned( fonTimeOut ) then
+        fonTimeOut( self );
+    end else
+    begin
+      for i := 0 to fPollNumber - 1 do
+      if fPollItem[i].revents > 0 then
+      begin
+        if i = 0 then
+        begin
+          // control messages.
+          msg.Clear;
+          fPollSocket[0].recv( msg );
+
+          if ( msg[0] = cZMQPoller_Register ) or
+             ( msg[0] = cZMQPoller_SyncRegister )then
+          begin
+            Byte(pes) := StrToInt( msg[2] );
+            AddToRegList( TZMQSocket( StrToInt( msg[1] ) ), pes, True,
+              msg[0] = cZMQPoller_SyncRegister );
+          end else
+
+          if ( msg[0] = cZMQPoller_DeRegister ) or
+             ( msg[0] = cZMQPoller_SyncDeRegister ) then
+          begin
+            Byte(pes) := StrToInt( msg[2] );
+            AddToRegList( TZMQSocket( StrToInt( msg[1] ) ), pes, False,
+              msg[0] = cZMQPoller_SyncDeRegister );
+          end else
+
+          if ( msg[0] = cZMQPoller_PollNumber ) or
+             ( msg[0] = cZMQPoller_SyncPollNumber ) then
+          begin
+            fPollNumber := StrToInt( msg[1] );
+            if msg[0] = cZMQPoller_SyncPollNumber then
+              sPairThread.send('');
+          end;
+
+          if msg[0] = cZMQPoller_Terminate then
+            Terminate;
+
+        end else
+        if Assigned( fOnEvent ) then
+        begin
+          Byte(pes) := fPollItem[i].revents;
+          fOnEvent( fPollSocket[i], pes );
+        end;
+      end;
+
+      if reglistcount > 0 then
+      begin
+        for i := 0 to reglistcount - 1 do
+        begin
+          j := 1;
+          while ( j < fPollItemCount ) and ( fPollSocket[j] <> reglist[i].socket ) do
+            inc( j );
+          if j < fPollItemCount then
+          begin
+            if reglist[i].reg then
+            begin
+              fPollItem[j].events := fPollItem[j].events or Byte( reglist[i].events );
+            end else
+              DelFromPollItems( reglist[i].socket, reglist[i].events, j );
+
+          end else
+          begin
+            if reglist[i].reg then
+              AddToPollItems( reglist[i].socket, reglist[i].events )
+            //else
+              //warn not found, but want to delete.
+          end;
+
+          if reglist[i].sync then
+            sPairThread.send( '' );
+
+        end;
+        reglistcount := 0;
+      end;
+    end;
+
+  except
+    on e: Exception do
+    begin
+      if ( e is EZMQException ) and
+         ( EZMQException(e).Num = ETERM ) then
+        Terminate;
+    if Assigned( fOnException ) then
+      fOnException( e );
+    end;
+  end;
+  msg.Free;
+
+  sPairThread.Free;
+
+end;
+
+procedure TZMQPoller.Register( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
+var
+  s: String;
+begin
+  if fSync then
+    AddToPollItems( socket, events )
+  else
+  begin
+    if bSync then
+      s := cZMQPoller_SyncRegister
+    else
+      s := cZMQPoller_Register;
+    sPair.send( [ s, IntToStr( Integer(socket) ), IntToStr( Byte( events ) )] );
+    if bSync then
+      sPair.recv( s );
+  end;
+end;
+
+procedure TZMQPoller.DeRegister( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
+var
+  s: String;
+  i: Integer;
+begin
+  if fSync then
+  begin
+    i := 0;
+    while ( i < fPollItemCount ) and ( fPollSocket[i] <> socket ) do
+      inc( i );
+    if i = fPollItemCount then
+      raise EZMQException.Create( 'socket not in pollitems!' );
+    DelFromPollItems( socket, events, i );
+  end else begin
+    if bSync then
+      s := cZMQPoller_SyncDeregister
+    else
+      s := cZMQPoller_Deregister;
+    sPair.send( [ s, IntToStr( Integer(socket) ), IntToStr( Byte( events ) )] );
+    if bSync then
+      sPair.recv( s );
+  end;
+end;
+
+procedure TZMQPoller.setPollNumber( const Value: Integer; bSync: Boolean = false );
+var
+  s: String;
+begin
+  if fSync then
+    fPollNumber := Value
+  else begin
+    if bSync then
+      s := cZMQPoller_PollNumber
+    else
+      s := cZMQPoller_SyncPollNumber;
+    sPair.send( [ s, IntToStr( Value ) ] );
+    if bSync then
+      sPair.recv( s );
+  end;
 end;
 
 /// if the second parameter specified, than only the first "pollCount"
 /// sockets polled
-function TZMQPoller.poll( timeout: Integer = -1; pollCount: Integer = -1 ): Integer;
+function TZMQPoller.poll( timeout: Integer = -1; lPollNumber: Integer = -1 ): Integer;
 var
   pc: Integer;
 begin
+  if not fSync then
+    raise EZMQException.Create('Poller hasn''t created in Synchronous mode');
   if fPollItemCount = 0 then
     raise EZMQException.Create( 'Nothing to poll!' );
-  if pollCount = -1 then
+  if lPollNumber = -1 then
     pc := fPollItemCount
   else
-  if ( pollCount > -1 ) and ( pollCount <= fPollItemCount ) then
-    pc := pollCount
+  if ( lpollNumber > -1 ) and ( lpollNumber <= fPollItemCount ) then
+    pc := lpollNumber
   else
     raise EZMQException.Create( 'wrong pollCount parameter.' );
-  result := zmq_poll( fPollItems[0], pc, timeout );
+  result := zmq_poll( fPollItem[0], pc, timeout );
   if result < 0 then
     raise EZMQException.Create
 end;
 
-function TZMQPoller.getPollResult( indx: Integer ): TZMQPollResult;
+function TZMQPoller.getPollResult( indx: Integer ): TZMQPollItem;
 var
   i,j: Integer;
 begin
+  if not fSync then
+    raise EZMQException.Create('Poller created in Synchronous mode');
   i := 0;
   j := -1;
   while ( i < fPollItemCount) and ( j < indx ) do
   begin
-    if ( fPollItems[i].revents and fPollItems[i].events ) > 0 then
+    if ( fPollItem[i].revents and fPollItem[i].events ) > 0 then
       inc( j );
     if j < indx then
       inc( i );
   end;
-  result.socket := fSockets[i];
-  result.revents := TZMQPollEvents( Byte( fPollItems[i].revents ) );
+  result.socket := fPollSocket[i];
+  Byte(result.events) := fPollItem[i].revents;
 end;
 
 procedure ZMQDevice( device: TZMQDevice; insocket, outsocket: TZMQSocket );

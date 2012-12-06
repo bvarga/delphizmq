@@ -17,7 +17,7 @@ var
   msg: TZMQMessage;
   more: Boolean;
   i,pc: Integer;
-  pollResult: TZMQPollResult;
+  pollResult: TZMQPollItem;
   otherSocket: TZMQSocket;
 
 begin
@@ -29,9 +29,9 @@ begin
   backend.bind( 'tcp://*:5560' );
 
   //  Initialize poll set
-  poller := TZMQPoller.Create;
-  poller.regist( frontend, [pePollIn] );
-  poller.regist( backend, [pePollIn] );
+  poller := TZMQPoller.Create( true );
+  poller.register( frontend, [pePollIn] );
+  poller.register( backend, [pePollIn] );
 
   //  Switch messages between sockets
   while True do
@@ -46,7 +46,7 @@ begin
       else
         otherSocket := frontend;
 
-      if pePollIn in pollResult.revents then
+      if pePollIn in pollResult.events then
       while more do
       begin
         //  Process all parts of the message

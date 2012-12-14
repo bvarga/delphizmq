@@ -115,7 +115,11 @@ version creates a thread, and do the polling there.
   between the class and the created thread. So this poller 
   implementation is not thread safe, don't register, deregister
   sockets in different threads.
-  
+        procedure TMyClass.pollerEvent( socket: TZMQSocket; event: TZMQPollEvents );
+          begin
+            do something...
+          end;
+          
         // create context.
         context := TZMQContext.Create;
         
@@ -126,19 +130,12 @@ version creates a thread, and do the polling there.
         // the poller creates it's own context.
         poller := TZMQPoller.Create( false, context );
         
+        poller.onEvent := pollerEvent;
+
         // register the socket. If the third parameter is true,
-        // than the register block until the socket registered.
+        // than the register block until the socket is registered.
         poller.register( socket, [pePollIn], false );
         
-        while not context.Terminated do
-        begin
-          rc := poller.poll;
-          if rc > 0 then
-            do something.
-        end;
-        poller.Free;
-        socket.Free;
-        context.Free;
     
   
 Monitoring Sockets ( just available in `v3.2`)

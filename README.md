@@ -84,29 +84,29 @@ version creates a thread, and do the polling there.
 
   - synchronous 
     
-    // create context
-    context := TZMQContext.Create;
-    socket := context.Socket( stDealer );
-    socket.connect( address );
+        // create context
+        context := TZMQContext.Create;
+        socket := context.Socket( stDealer );
+        socket.connect( address );
     
-    // Create the poller. The `true` parameter tells 
-    // the poller to use synchronous polling
-    poller := TZMQPoller.Create( true );
+        // Create the poller. The `true` parameter tells 
+        // the poller to use synchronous polling
+        poller := TZMQPoller.Create( true );
     
-    // register the socket.
-    poller.register( socket, [pePollIn] );
-    
-    timeout := 100; // 100ms
-    while not context.Terminated do
-    begin
-      rc := poller.poll(timeout);
-      if rc > 0 then
-        do something...
-    end;
-    
-    poller.Free;
-    socket.Free;
-    context.Free;
+        // register the socket.
+        poller.register( socket, [pePollIn] );
+        
+        timeout := 100; // 100ms
+        while not context.Terminated do
+        begin
+          rc := poller.poll(timeout);
+          if rc > 0 then
+            do something...
+        end;
+        
+        poller.Free;
+        socket.Free;
+        context.Free;
      
   - asynchronous way
     
@@ -116,29 +116,29 @@ version creates a thread, and do the polling there.
   implementation is not thread safe, don't register, deregister
   sockets in different threads.
   
-    // create context.
-    context := TZMQContext.Create;
-    
-    socket := context.Socket( stDealer );
-    socket.connect( address );
-    
-    // create the poller. the second parameter can be nil, than
-    // the poller creates it's own context.
-    poller := TZMQPoller.Create( false, context );
-    
-    // register the socket. If the third parameter is true,
-    // than the register block until the socket registered.
-    poller.register( socket, [pePollIn], false );
-    
-    while not context.Terminated do
-    begin
-      rc := poller.poll;
-      if rc > 0 then
-        do something.
-    end;
-    poller.Free;
-    socket.Free;
-    context.Free;
+        // create context.
+        context := TZMQContext.Create;
+        
+        socket := context.Socket( stDealer );
+        socket.connect( address );
+        
+        // create the poller. the second parameter can be nil, than
+        // the poller creates it's own context.
+        poller := TZMQPoller.Create( false, context );
+        
+        // register the socket. If the third parameter is true,
+        // than the register block until the socket registered.
+        poller.register( socket, [pePollIn], false );
+        
+        while not context.Terminated do
+        begin
+          rc := poller.poll;
+          if rc > 0 then
+            do something.
+        end;
+        poller.Free;
+        socket.Free;
+        context.Free;
     
   
 Monitoring Sockets ( just available in `v3.2`)

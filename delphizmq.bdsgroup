@@ -8,11 +8,7 @@
 			<Option Name="GUID">{1CEEC838-8345-48F9-95FF-C5F1674217AD}</Option>
 		</Option>
 	</PersonalityInfo>
-	<Default.Personality>  
-    
-    
-    
-    <Projects>
+	<Default.Personality>  <Projects>
       <Projects Name="tests.exe">tests\tests.bdsproj</Projects>
       <Projects Name="local_lat.exe">perf\local_lat.bdsproj</Projects>
       <Projects Name="remote_lat.exe">perf\remote_lat.bdsproj</Projects>
@@ -52,7 +48,8 @@
       <Projects Name="lruqueue.exe">examples\lruqueue.bdsproj</Projects>
       <Projects Name="lruqueue2.exe">examples\lruqueue2.bdsproj</Projects>
       <Projects Name="asyncsrv.exe">examples\asyncsrv.bdsproj</Projects>
-      <Projects Name="Targets">tests.exe local_lat.exe remote_lat.exe remote_thr.exe inproc_lat.exe inproc_thr.exe local_thr.exe hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe syncpub.exe syncsub.exe psenvpub.exe psenvsub.exe identity.exe rtdealer.exe rtmama.exe rtpapa.exe lruqueue.exe lruqueue2.exe asyncsrv.exe</Projects>
+      <Projects Name="peering1.exe">examples\peering1.bdsproj</Projects>
+      <Projects Name="Targets">tests.exe local_lat.exe remote_lat.exe remote_thr.exe inproc_lat.exe inproc_thr.exe local_thr.exe hwclient.exe hwserver.exe hwserverapi.exe version.exe wuserver.exe wuclient.exe taskvent.exe taskwork.exe tasksink.exe msreader.exe mspoller.exe taskwork2.exe tasksink2.exe interrupt.exe wuproxy.exe rrclient.exe rrserver.exe rrbroker.exe msgqueue.exe mtserver.exe mtrelay.exe syncpub.exe syncsub.exe psenvpub.exe psenvsub.exe identity.exe rtdealer.exe rtmama.exe rtpapa.exe lruqueue.exe lruqueue2.exe asyncsrv.exe peering1.exe</Projects>
     </Projects>
     <Dependencies/>
   </Default.Personality>

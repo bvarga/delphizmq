@@ -27,7 +27,7 @@ begin
   anonymous.connect( 'inproc://example' );
   anonymous.send( 'ROUTER uses a generated UUID' );
 
-  sink.dump;
+  //sink.dump; [todo]
 
   //  Then set the identity ourself
   identified := context.Socket( stReq );
@@ -35,7 +35,7 @@ begin
   identified.connect( 'inproc://example' );
   identified.send( 'ROUTER socket uses REQ''s socket identity' );
 
-  sink.dump;
+  //sink.dump; [todo]
 
   sink.Free;
   anonymous.Free;

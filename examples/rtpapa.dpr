@@ -40,13 +40,13 @@ begin
   ]);
 
   //  Worker should get just the workload
-  worker.dump;
+  //worker.dump; [todo]
 
   //  We don't play with envelopes in the worker
   worker.send( 'This is the reply' );
 
   //  Now dump what we got off the ROUTER socket…
-  client.dump;
+  //client.dump; [todo]
 
   client.Free;
   worker.Free;

@@ -301,11 +301,6 @@ type
 
     {$endif}
 
-    {$ifndef UNIX}
-    // helpers. inspired by the zhelpers.h
-    procedure dump;
-    {$endif}
-
     property SocketType: TZMQSocketType read getSocketType;
     property RcvMore: Boolean read getRcvMore;
 
@@ -433,9 +428,9 @@ type
     constructor Create( lSync: Boolean = false; lContext: TZMQContext = nil );
     destructor Destroy; override;
 
-    procedure Register( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
-    procedure Deregister( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
-    procedure setPollNumber( const Value: Integer; bSync: Boolean = false );
+    procedure Register( socket: TZMQSocket; events: TZMQPollEvents; bWait: Boolean = false );
+    procedure Deregister( socket: TZMQSocket; events: TZMQPollEvents; bWait: Boolean = false );
+    procedure setPollNumber( const Value: Integer; bWait: Boolean = false );
 
     function poll( timeout: Longint = -1; lPollNumber: Integer = -1 ): Integer;
     property pollResult[indx: Integer]: TZMQPollItem read getPollResult;
@@ -449,6 +444,10 @@ type
   end;
 
   TZMQDevice = ( dStreamer, dForwarder, dQueue );
+
+  {$ifdef zmq3}
+  procedure ZMQProxy( frontend, backend, capture: TZMQSocket );
+  {$endif}
 
   procedure ZMQDevice( device: TZMQDevice; insocket, outsocket: TZMQSocket );
   procedure ZMQVersion(var major, minor, patch: Integer);
@@ -1429,63 +1428,6 @@ begin
   end;
 end;
 
-{$ifndef UNIX}
-// helpers. inspired by the zhelpers.h
-// not READY!
-procedure TZMQSocket.dump;
-var
-  msg: TZMQMessage;
-  s: AnsiString;
-  i,l: Integer;
-  pac: PAnsiChar;
-  pwc: PWideChar;
-  b: BOOL;
-begin
-  msg := TZMQMessage.create;
-  writeln('----------------------------------------');
-  try
-    repeat
-      l := recv( msg, 0 );
-      i := 0;
-      pac := msg.data;
-      while ( i < l ) and ( Ord( PAnsiChar(pac + i )^ ) >=32 ) and
-        ( Ord( PAnsiChar(pac + i)^ ) <= 127 ) do Inc( i );
-      if i < l then
-      begin
-        // not AnsiString;
-        pac := msg.data;
-
-          i := Windows.MultiByteToWideChar( CP_UTF8, 8, pac, l, nil, 0 );
-          if i <> 0  then
-            Writeln('some Utf8')
-          else begin
-
-          // not unicode string.
-          pwc := msg.data;
-
-            b := false;
-            i := Windows.WideCharToMultiByte( CP_UTF8, 8, pwc, -1, nil, 0, nil, @b );
-            if i <> 0 then
-            Writeln('some Wide')
-            else
-
-            Writeln( 'Hex' );
-          
-
-          end;
-
-      end else
-      begin
-        SetString( s, PChar(msg.data), l );
-        Writeln( s );
-      end;
-    until not rcvMore;
-  finally
-    msg.Free;
-  end;
-end;
-{$endif}
-
 { TZMQContext }
 
 constructor TZMQContext.create{$ifndef zmq3}( io_threads: Integer ){$endif};
@@ -1918,7 +1860,7 @@ begin
 
 end;
 
-procedure TZMQPoller.Register( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
+procedure TZMQPoller.Register( socket: TZMQSocket; events: TZMQPollEvents; bWait: Boolean = false );
 var
   s: String;
 begin
@@ -1926,17 +1868,17 @@ begin
     AddToPollItems( socket, events )
   else
   begin
-    if bSync then
+    if bWait then
       s := cZMQPoller_SyncRegister
     else
       s := cZMQPoller_Register;
     sPair.send( [ s, IntToStr( Integer(socket) ), IntToStr( Byte( events ) )] );
-    if bSync then
+    if bWait then
       sPair.recv( s );
   end;
 end;
 
-procedure TZMQPoller.DeRegister( socket: TZMQSocket; events: TZMQPollEvents; bSync: Boolean = false );
+procedure TZMQPoller.DeRegister( socket: TZMQSocket; events: TZMQPollEvents; bWait: Boolean = false );
 var
   s: String;
   i: Integer;
@@ -1950,29 +1892,29 @@ begin
       raise EZMQException.Create( 'socket not in pollitems!' );
     DelFromPollItems( socket, events, i );
   end else begin
-    if bSync then
+    if bWait then
       s := cZMQPoller_SyncDeregister
     else
       s := cZMQPoller_Deregister;
     sPair.send( [ s, IntToStr( Integer(socket) ), IntToStr( Byte( events ) )] );
-    if bSync then
+    if bWait then
       sPair.recv( s );
   end;
 end;
 
-procedure TZMQPoller.setPollNumber( const Value: Integer; bSync: Boolean = false );
+procedure TZMQPoller.setPollNumber( const Value: Integer; bWait: Boolean = false );
 var
   s: String;
 begin
   if fSync then
     fPollNumber := Value
   else begin
-    if bSync then
+    if bWait then
       s := cZMQPoller_PollNumber
     else
       s := cZMQPoller_SyncPollNumber;
     sPair.send( [ s, IntToStr( Value ) ] );
-    if bSync then
+    if bWait then
       sPair.recv( s );
   end;
 end;
@@ -2016,6 +1958,19 @@ begin
   end;
   result.socket := fPollSocket[i];
   Byte(result.events) := fPollItem[i].revents;
+end;
+
+procedure ZMQProxy( frontend, backend, capture: TZMQSocket );
+var
+  p: Pointer;
+begin
+  if capture <> nil then
+    p := capture.SocketPtr
+  else
+    p := nil;
+  if zmq_proxy( frontend.SocketPtr, backend.SocketPtr, p ) <> -1 then
+    raise EZMQException.Create( 'Proxy does not return -1' );
+  //raise EZMQException.Create;
 end;
 
 procedure ZMQDevice( device: TZMQDevice; insocket, outsocket: TZMQSocket );

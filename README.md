@@ -76,6 +76,71 @@ Receiving messages is as easy as
     // this will add message parts to the stringlist, and returns
     // the count of the messages received.
 
+**Polling**
+
+Polling can work in two different ways, let's call the first 
+_synchronous_, the second _asynchronous_ way. The _asynchronous_
+version creates a thread, and do the polling there.
+
+  - synchronous 
+    
+    // create context
+    context := TZMQContext.Create;
+    socket := context.Socket( stDealer );
+    socket.connect( address );
+    
+    // Create the poller. The `true` parameter tells 
+    // the poller to use synchronous polling
+    poller := TZMQPoller.Create( true );
+    
+    // register the socket.
+    poller.register( socket, [pePollIn] );
+    
+    timeout := 100; // 100ms
+    while not context.Terminated do
+    begin
+      rc := poller.poll(timeout);
+      if rc > 0 then
+        do something...
+    end;
+    
+    poller.Free;
+    socket.Free;
+    context.Free;
+     
+  - asynchronous way
+    
+  This implementation uses a kind of reactor pattern, the poller
+  starts a new thread , and creates a pair socket connection 
+  between the class and the created thread. So this poller 
+  implementation is not thread safe, don't register, deregister
+  sockets in different threads.
+  
+    // create context.
+    context := TZMQContext.Create;
+    
+    socket := context.Socket( stDealer );
+    socket.connect( address );
+    
+    // create the poller. the second parameter can be nil, than
+    // the poller creates it's own context.
+    poller := TZMQPoller.Create( false, context );
+    
+    // register the socket. If the third parameter is true,
+    // than the register block until the socket registered.
+    poller.register( socket, [pePollIn], false );
+    
+    while not context.Terminated do
+    begin
+      rc := poller.poll;
+      if rc > 0 then
+        do something.
+    end;
+    poller.Free;
+    socket.Free;
+    context.Free;
+    
+  
 Monitoring Sockets ( just available in `v3.2`)
 
     // define a callback like this.
@@ -100,36 +165,20 @@ in the examples directory there are some examples translated from the guide.
 
 Changes
 =======
+* New poller class
 * poll function of TZMQPoller has a new optional parameter "pollCount".
-  
-
 * Upgrade dll-s to v3.2.2 RC2
 * New monitoring logic implemented.
 * Default ZMQ version for the binding is now 3.2 ( can switch back to 2.2 by not defining `zmq3` in the `zmq.inc` file )
-
-
-TODO
-====
-
-* if poll returns ETERM the socket with the terminated context should be 
-  removed from the poll, and closed;
-* zmq_stopwatch_stop returns the correct value, but on program exit there's 
-  an exception.
-* if recv(string) recieves not a valid string ,but a binary data convert it 
-  to Hex.(not trivial, because String definition changes through delphi versions)
-  (the identity.dpr is a test case)
-* Decide the need of the zhelpers.h
-* beter CTRL+C handling
-* improve lruqueue2.dpr ( in client task CTRL+C handling)
 
 Authors
 =======
 
 The following people have contributed to the project:
 
-Balazs Varga <bb.varga@gmail.com> 
-Stathis Gkotsis <stathis.gkotsis@gmail.com>
-Stephane Carre <scarre.lu@gmail.com>
+    Balazs Varga <bb.varga@gmail.com> 
+    Stathis Gkotsis <stathis.gkotsis@gmail.com>
+    Stephane Carre <scarre.lu@gmail.com>
 
 Copying
 =======

@@ -385,6 +385,13 @@ function zmq_poll( var items: pollitem_t; nitems: Integer; timeout: Longint ): I
 {******************************************************************************}
 {*  Built-in devices                                                          *}
 {******************************************************************************}
+
+{$ifdef zmq3}
+{*  Built-in message proxy (3-way) *}
+function zmq_proxy( frontend, backend, capture: Pointer ): Integer; cdecl; external libzmq;
+
+{$endif}
+
 const
   ZMQ_STREAMER = 1;
   ZMQ_FORWARDER = 2;

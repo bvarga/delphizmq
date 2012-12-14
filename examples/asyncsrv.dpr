@@ -12,7 +12,6 @@ uses
     SysUtils
   , Classes
   , zmqapi
-  , zmqpoller
   ;
 
 //  ---------------------------------------------------------------------
@@ -26,7 +25,7 @@ var
   ctx: TZMQContext;
   client: TZMQSocket;
   poller: TZMQPoller;
-  pr: TZMQPollResult;
+  pr: TZMQPollItem;
   i, pc, request_nbr: Integer;
   tsl: TStringList;
 begin
@@ -37,11 +36,11 @@ begin
   client.Identity := IntToHex( Integer(client),8 );
   client.connect( 'tcp://localhost:5570' );
 
-  poller := TZMQPoller.Create;
-  poller.regist( client, [pePollIn] );
+  poller := TZMQPoller.Create( true );
+  poller.register( client, [pePollIn] );
 
   tsl := TStringList.Create;
-  
+
   request_nbr := 0;
   while true do
   begin
@@ -52,42 +51,17 @@ begin
       if ( pc > 0 ) then
       begin
         pr := poller.pollResult[0];
-        pr.socket.recv( )
+        tsl.Clear;
+        pr.socket.recv( tsl );
+        ZMQNote( tsl[0] + ' ' + client.Identity );
       end;
     end;
-
+    request_nbr := request_nbr + 1;
+    client.send( Format('request #%d',[request_nbr]) )
   end;
-
+  tsl.Free;
+  ctx.Free;
 end;
-
-    zmq_pollitem_t items [] = { { client, 0, ZMQ_POLLIN, 0 } };
-    int request_nbr = 0;
-    while (true) {
-        //  Tick once per second, pulling in arriving messages
-        int centitick;
-        for (centitick = 0; centitick < 100; centitick++) {
-            zmq_poll (items, 1, 10 * ZMQ_POLL_MSEC);
-            if (items [0].revents & ZMQ_POLLIN) {
-                zmsg_t *msg = zmsg_recv (client);
-                zframe_print (zmsg_last (msg), identity);
-                zmsg_destroy (&msg);
-            }
-        }
-        zstr_sendf (client, "request #%d", ++request_nbr);
-    }
-    zctx_destroy (&ctx);
-    return NULL;
-}
-
-
-begin
-
-end.
-
-#include "czmq.h"
-
-
-static void *
 
 //  This is our server task.
 //  It uses the multithreaded server model to deal requests out to a pool
@@ -95,75 +69,85 @@ static void *
 //  one request at a time but one client can talk to multiple workers at
 //  once.
 
-static void server_worker (void *args, zctx_t *ctx, void *pipe);
+procedure server_worker( args: Pointer ); forward;
 
-void *server_task (void *args)
-{
-    zctx_t *ctx = zctx_new ();
+procedure server_task( args: Pointer );
+var
+  ctx: TZMQContext;
+  frontend,
+  backend: TZMQSocket;
+  i: Integer;
+  tid: Cardinal;
+begin
+  ctx := TZMQContext.create;
 
-    //  Frontend socket talks to clients over TCP
-    void *frontend = zsocket_new (ctx, ZMQ_ROUTER);
-    zsocket_bind (frontend, "tcp://*:5570");
+  //  Frontend socket talks to clients over TCP
+  frontend := ctx.Socket( stRouter );
+  frontend.bind( 'tcp://*:5570' );
 
-    //  Backend socket talks to workers over inproc
-    void *backend = zsocket_new (ctx, ZMQ_DEALER);
-    zsocket_bind (backend, "inproc://backend");
+  //  Backend socket talks to workers over inproc
+  backend := ctx.Socket( stDealer );
+  backend.bind( 'inproc://backend' );
 
-    //  Launch pool of worker threads, precise number is not critical
-    int thread_nbr;
-    for (thread_nbr = 0; thread_nbr < 5; thread_nbr++)
-        zthread_fork (ctx, server_worker, NULL);
+  //  Launch pool of worker threads, precise number is not critical
+  for i := 0 to 4 do
+    BeginThread( nil, 0, @server_worker, ctx, 0, tid );
 
-    //  Connect backend to frontend via a proxy
-    zmq_proxy (frontend, backend, NULL);
+  //  Connect backend to frontend via a proxy
+  ZMQProxy( frontend, backend, nil );
 
-    zctx_destroy (&ctx);
-    return NULL;
-}
+  ctx.Free;
+end;
 
 //  Each worker task works on one request at a time and sends a random number
 //  of replies back, with random delays between replies:
 
-static void
-server_worker (void *args, zctx_t *ctx, void *pipe)
-{
-    void *worker = zsocket_new (ctx, ZMQ_DEALER);
-    zsocket_connect (worker, "inproc://backend");
+procedure server_worker( args: Pointer );
+var
+  ctx: TZMQContext;
+  worker: TZMQSocket;
+  tsl: TStringList;
+  i,replies: Integer;
+begin
+  ctx := args;
+  worker := ctx.Socket( stDealer );
+  worker.connect( 'inproc://backend' );
+  tsl := TStringList.Create;
+  while true do
+  begin
+    //  The DEALER socket gives us the reply envelope and message
+    worker.recv( tsl );
 
-    while (true) {
-        //  The DEALER socket gives us the address envelope and message
-        zmsg_t *msg = zmsg_recv (worker);
-        zframe_t *address = zmsg_pop (msg);
-        zframe_t *content = zmsg_pop (msg);
-        assert (content);
-        zmsg_destroy (&msg);
+    //  Send 0..4 replies back
+    replies := Random( 5 );
+    for i := 0 to replies - 1 do
+    begin
+      //  Sleep for some fraction of a second
+      sleep( Random(1000) + 1 );
+      worker.send( [ tsl[0], tsl[1] ] );
+    end;
+    tsl.Clear;
 
-        //  Send 0..4 replies back
-        int reply, replies = randof (5);
-        for (reply = 0; reply < replies; reply++) {
-            //  Sleep for some fraction of a second
-            zclock_sleep (randof (1000) + 1);
-            zframe_send (&address, worker, ZFRAME_REUSE + ZFRAME_MORE);
-            zframe_send (&content, worker, ZFRAME_REUSE);
-        }
-        zframe_destroy (&address);
-        zframe_destroy (&content);
-    }
-}
+  end;
+  tsl.Free;
+end;
 
-//  The main thread simply starts several clients, and a server, and then
-//  waits for the server to finish.
+var
+  tid: Cardinal;
+  ctx: TZMQContext;
+begin
+  //  The main thread simply starts several clients, and a server, and then
+  //  waits for the server to finish.
+  Randomize;
 
-int main (void)
-{
-    zctx_t *ctx = zctx_new ();
-    zthread_new (client_task, NULL);
-    zthread_new (client_task, NULL);
-    zthread_new (client_task, NULL);
-    zthread_new (server_task, NULL);
+  ctx := TZMQContext.create;
+  BeginThread( nil, 0, @client_task, nil, 0, tid );
+  BeginThread( nil, 0, @client_task, nil, 0, tid );
+  BeginThread( nil, 0, @client_task, nil, 0, tid );
 
-    //  Run for 5 seconds then quit
-    zclock_sleep (5 * 1000);
-    zctx_destroy (&ctx);
-    return 0;
-}
+  BeginThread( nil, 0, @server_task, nil, 0, tid );
+
+  sleep( 5 * 1000 );
+  ctx.Free;
+
+end.

@@ -115,6 +115,7 @@ version creates a thread, and do the polling there.
   between the class and the created thread. So this poller 
   implementation is not thread safe, don't register, deregister
   sockets in different threads.
+  
         procedure TMyClass.pollerEvent( socket: TZMQSocket; event: TZMQPollEvents );
           begin
             do something...

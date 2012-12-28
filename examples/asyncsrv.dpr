@@ -25,41 +25,40 @@ var
   ctx: TZMQContext;
   client: TZMQSocket;
   poller: TZMQPoller;
-  pr: TZMQPollItem;
-  i, pc, request_nbr: Integer;
-  tsl: TStringList;
+  i, request_nbr: Integer;
+  msg: TZMQMsg;
 begin
   ctx := TZMQContext.create;
   client := ctx.Socket( stDealer );
 
   //  Set random identity to make tracing easier
-  client.Identity := IntToHex( Integer(client),8 );
+  client.Identity := IntToHex( Integer(client), 8 );
   client.connect( 'tcp://localhost:5570' );
 
   poller := TZMQPoller.Create( true );
   poller.register( client, [pePollIn] );
 
-  tsl := TStringList.Create;
-
+  msg := nil;
   request_nbr := 0;
   while true do
   begin
     //  Tick once per second, pulling in arriving messages
     for i := 0 to 100 - 1 do
     begin
-      pc := poller.poll( 10 );
-      if ( pc > 0 ) then
+      poller.poll( 10 );
+      if ( pePollIn in poller.PollItem[0].revents ) then
       begin
-        pr := poller.pollResult[0];
-        tsl.Clear;
-        pr.socket.recv( tsl );
-        ZMQNote( tsl[0] + ' ' + client.Identity );
+        client.recv( msg );
+        ZMQNote( client.Identity + ': ' + msg.last.dump );
+        msg.Free;
+        msg := nil;
       end;
     end;
     request_nbr := request_nbr + 1;
     client.send( Format('request #%d',[request_nbr]) )
   end;
-  tsl.Free;
+
+  poller.Free;
   ctx.Free;
 end;
 
@@ -106,48 +105,54 @@ procedure server_worker( args: Pointer );
 var
   ctx: TZMQContext;
   worker: TZMQSocket;
-  tsl: TStringList;
+  msg: TZMQMsg;
+  identity,
+  content: TZMQMessage;
   i,replies: Integer;
 begin
   ctx := args;
   worker := ctx.Socket( stDealer );
   worker.connect( 'inproc://backend' );
-  tsl := TStringList.Create;
-  while true do
+  msg := nil;
+
+  while not ctx.Terminated do
   begin
     //  The DEALER socket gives us the reply envelope and message
-    worker.recv( tsl );
-
+    worker.recv( msg );
+    identity := msg.pop;
+    content := msg.pop;
+    assert(content <> nil);
+    msg.Free;
+    msg := nil;
     //  Send 0..4 replies back
     replies := Random( 5 );
     for i := 0 to replies - 1 do
     begin
       //  Sleep for some fraction of a second
       sleep( Random(1000) + 1 );
-      worker.send( [ tsl[0], tsl[1] ] );
+      msg := TZMQMsg.Create;
+      msg.add( identity.dup );
+      msg.add( content.dup );
+      worker.send( msg );
     end;
-    tsl.Clear;
-
+    identity.Free;
+    content.Free;
   end;
-  tsl.Free;
 end;
 
 var
   tid: Cardinal;
-  ctx: TZMQContext;
 begin
   //  The main thread simply starts several clients, and a server, and then
   //  waits for the server to finish.
   Randomize;
 
-  ctx := TZMQContext.create;
   BeginThread( nil, 0, @client_task, nil, 0, tid );
   BeginThread( nil, 0, @client_task, nil, 0, tid );
   BeginThread( nil, 0, @client_task, nil, 0, tid );
-
   BeginThread( nil, 0, @server_task, nil, 0, tid );
 
+  //  Run for 5 seconds then quit
   sleep( 5 * 1000 );
-  ctx.Free;
 
 end.

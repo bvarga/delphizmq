@@ -107,6 +107,10 @@ type
     function getProperty( prop: TZMQMessageProperty ): Integer;
     procedure setProperty( prop: TZMQMessageProperty; value: Integer );
     {$endif}
+
+    function getAsUtf8String: Utf8String;
+    procedure setAsUtf8String(const Value: Utf8String);
+
   public
     constructor create; overload;
     constructor create( size: size_t ); overload;
@@ -122,8 +126,83 @@ type
     {$ifdef zmq3}
     function more: Boolean;
     {$endif}
+
+    function dup: TZMQMessage;
+    // convert the data into a readable string.
+    function dump: Utf8String;
+
+    // copy the whole content of the stream to the message.
+    procedure LoadFromStream( strm: TStream );
+    procedure SaveToStream( strm: TStream );
+
+    property asUtf8String: Utf8String read getAsUtf8String write setAsUtf8String;
+
   end;
 
+  // for multipart message
+  TZMQMsg = class
+  private
+   msgs: TList;
+   csize: Cardinal;
+   cursor: Integer;
+    function getItem(indx: Integer): TZMQMessage;
+  protected
+  public
+   constructor create;
+   destructor Destroy; override;
+
+   // Return size of message, i.e. number of frames (0 or more).
+   function size: Integer;
+
+   // Return size of message, i.e. number of frames (0 or more).
+   function content_size: Integer;
+
+   // Push frame to the front of the message, i.e. before all other frames.
+   // Message takes ownership of frame, will destroy it when message is sent.
+   // Set the cursor to 0
+   // Returns 0 on success, -1 on error.
+   function push( msg: TZMQMessage ): Integer;
+
+   // Remove first frame from message, if any. Returns frame, or NULL. Caller
+   // now owns frame and must destroy it when finished with it.
+   // Set the cursor to 0
+   function pop: TZMQMessage;
+
+   // Add frame to the end of the message, i.e. after all other frames.
+   // Message takes ownership of frame, will destroy it when message is sent.
+   // Set the cursor to 0
+   // Returns 0 on success
+   function add( msg: TZMQMessage ): Integer;
+
+   // Push frame plus empty frame to front of message, before first frame.
+   // Message takes ownership of frame, will destroy it when message is sent.
+   procedure wrap( msg: TZMQMessage );
+
+   // Pop frame off front of message, caller now owns frame
+   // If next frame is empty, pops and destroys that empty frame.
+   function unwrap: TZMQMessage;
+
+   // Remove specified frame from list, if present. Does not destroy frame.
+   // Set the cursor to 0
+   procedure remove( msg: TZMQMessage );
+
+   // Set cursor to first frame in message. Returns frame, or NULL.
+   function first: TZMQMessage;
+
+   // Return the next frame. If there are no more frames, returns NULL. To move
+   // to the first frame call zmsg_first(). Advances the cursor.
+   function next: TZMQMessage;
+
+   // Return the last frame. If there are no frames, returns NULL.
+   // Set the cursor to the last
+   function last: TZMQMessage;
+
+   // Create copy of message, as new message object
+   function dup: TZMQMsg;
+
+   procedure Clear;
+   property item[indx: Integer]: TZMQMessage read getItem; default;
+  end;
 
   TZMQSocketType = ( stPair, stPub, stSub, stReq, stRep, stDealer,
     stRouter, stPull, stPush, stXPub, stXSub );
@@ -283,6 +362,8 @@ type
     function send( msg: TZMQMessage; flags: TZMQSendFlags = [] ): Integer; overload;
     function send( strm: TStream; size: Integer; flags: TZMQSendFlags = [] ): Integer; overload;
     function send( msg: String; flags: TZMQSendFlags = [] ): Integer; overload;
+
+    function send( var msgs: TZMQMsg; dontwait: Boolean = false ): Integer; overload;
     function send( msg: Array of String; dontwait: Boolean = false ): Integer; overload;
     function send( msg: TStrings; dontwait: Boolean = false ): Integer; overload;
     {$ifdef zmq3}
@@ -292,6 +373,8 @@ type
     function recv( msg: TZMQMessage; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( var msg: String; flags: TZMQRecvFlags = [] ): Integer; overload;
+
+    function recv( var msgs: TZMQMsg; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer; overload;
 
     {$ifdef zmq3}
@@ -388,6 +471,7 @@ type
   TZMQPollItem = record
     socket: TZMQSocket;
     events: TZMQPollEvents;
+    revents: TZMQPollEvents;
   end;
 
   TZMQPollEventProc = procedure( socket: TZMQSocket; event: TZMQPollEvents ) of object;
@@ -591,6 +675,214 @@ begin
 end;
 
 {$endif}
+
+function TZMQMessage.dup: TZMQMessage;
+begin
+  result := TZMQMessage.create( size );
+  System.Move( data^, result.data^, size );
+end;
+
+function TZMQMessage.dump: Utf8String;
+var
+  sUtf8: Utf8String;
+  iSize: Integer;
+begin
+  // not complete.
+  iSize := size;
+  if iSize = 0 then
+    result := ''
+  else if Integer(data^) = 0 then
+  begin
+    SetLength( sutf8, iSize * 2 );
+    BinToHex( data, PAnsiChar(sutf8), iSize );
+  end else
+    result := asUtf8String;
+end;
+
+function TZMQMessage.getAsUtf8String: Utf8String;
+begin
+  SetString( result, PChar(data), size );
+end;
+
+procedure TZMQMessage.setAsUtf8String( const Value: Utf8String );
+var
+  iSize: Integer;
+begin
+  iSize := Length( Value );
+  rebuild( iSize );
+  System.Move( Value[1], data^, iSize );
+end;
+
+procedure TZMQMessage.LoadFromStream( strm: TStream );
+begin
+  strm.Position := 0;
+  if strm.size <> size then
+    rebuild( strm.Size );
+  strm.ReadBuffer( data^, strm.Size );
+end;
+
+procedure TZMQMessage.SaveToStream( strm: TStream );
+begin
+  strm.WriteBuffer( data^, size );
+end;
+
+{ TZMQMsg }
+
+constructor TZMQMsg.create;
+begin
+  msgs := TList.Create;
+  csize := 0;
+  cursor := 0;
+end;
+
+destructor TZMQMsg.Destroy;
+begin
+  msgs.Clear;
+  msgs.Free;
+  inherited;
+end;
+
+function TZMQMsg.size: Integer;
+begin
+  result := msgs.Count;
+end;
+
+function TZMQMsg.content_size: Integer;
+begin
+  result := csize;
+end;
+
+function TZMQMsg.push( msg: TZMQMessage ): Integer;
+begin
+  try
+    msgs.Insert( 0, msg );
+    csize := csize + msg.size;
+    result := 0;
+    cursor := 0;
+  except
+    result := -1
+  end;
+end;
+
+function TZMQMsg.pop: TZMQMessage;
+begin
+  if size > 0 then
+  begin
+    result := msgs[0];
+    csize := csize - result.size;
+    msgs.Delete( 0 );
+    cursor := 0;
+  end else
+    result := nil;
+end;
+
+function TZMQMsg.add( msg: TZMQMessage ): Integer;
+begin
+  try
+    msgs.Add( msg );
+    csize := csize + msg.size;
+    result := 0;
+    cursor := 0;
+  except
+    result := -1;
+  end;
+end;
+
+procedure TZMQMsg.wrap( msg: TZMQMessage );
+begin
+  push( TZMQMessage.create( 0 ) );
+  push( msg );
+end;
+
+function TZMQMsg.unwrap: TZMQMessage;
+begin
+  result := pop;
+  if ( size > 0 ) and ( Item[0].size = 0 ) then
+    pop.Free;
+end;
+
+procedure TZMQMsg.remove( msg: TZMQMessage );
+var
+  i: Integer;
+begin
+  i := msgs.IndexOf( msg );
+  if i > 0 then
+  begin
+    csize := csize - Item[i].size;
+    msgs.Delete( i );
+    cursor := 0;
+  end;
+end;
+
+function TZMQMsg.first: TZMQMessage;
+begin
+  if size > 0 then
+  begin
+    result := msgs[0];
+    cursor := 1;
+  end else begin
+    result := nil;
+    cursor := 0;
+  end;
+end;
+
+function TZMQMsg.next: TZMQMessage;
+begin
+  if cursor < size then
+  begin
+    result := msgs[cursor];
+    inc( cursor );
+  end else
+    result := nil;
+end;
+
+function TZMQMsg.last: TZMQMessage;
+begin
+  if size > 0 then
+    result := msgs[size - 1]
+  else
+    result := nil;
+  cursor := size;
+end;
+
+function TZMQMsg.dup: TZMQMsg;
+var
+  msg,
+  msgnew: TZMQMessage;
+  iSize: Integer;
+begin
+  result := TZMQMsg.create;
+  msg := first;
+  while msg <> nil do
+  begin
+    iSize := msg.size;
+    msgnew := TZMQMessage.create( iSize );
+    {$ifdef UNIX}
+    Move( msg.data^, msgnew.data^, iSize );
+    {$else}
+    CopyMemory( msgnew.data, msg.data, iSize );
+    {$endif}
+    result.add( msgnew );
+    msg := next;
+  end;
+  result.csize := csize;
+  result.cursor := cursor;
+end;
+
+procedure TZMQMsg.Clear;
+var
+  i: Integer;
+begin
+  for i := 0 to size - 1 do
+    Item[i].Free;
+  cursor := 0;
+end;
+
+function TZMQMsg.getItem( indx: Integer ): TZMQMessage;
+begin
+  result := msgs[indx];
+end;
+
 
 { TZMQSocket }
 
@@ -1200,6 +1492,27 @@ begin
   end;
 end;
 
+function TZMQSocket.send( var msgs: TZMQMsg; dontwait: Boolean = false ): Integer;
+var
+  flags: TZMQSendFlags;
+begin
+  Result := 0;
+  if dontwait then
+    flags := [{$ifdef zmq3}sfDontWait{$else}sfNoBlock{$endif}]
+  else
+    flags := [];
+  while result < msgs.size do
+  begin
+    if result = msgs.size - 1 then
+      send( msgs[result], flags )
+    else
+      send( msgs[result], flags + [sfSndMore] );
+    inc( result );
+  end;
+  msgs.Free;
+  msgs := nil;
+end;
+
 // send multipart message in blocking or nonblocking mode, depending on the
 // dontwait parameter. The return value is the nmber of messages sent.
 function TZMQSocket.send( msg: Array of String; dontwait: Boolean = false ): Integer;
@@ -1407,6 +1720,30 @@ begin
   end;
 end;
 
+function TZMQSocket.recv( var msgs: TZMQMsg; flags: TZMQRecvFlags = [] ): Integer;
+var
+  msg: TZMQMessage;
+  bRcvMore: Boolean;
+  rc: Integer;
+begin
+  if msgs = nil then
+    msgs := TZMQMsg.Create;
+    
+  bRcvMore := True;
+  result := 0;
+  while bRcvMore do
+  begin
+    msg := TZMQMessage.create;
+    rc := recv( msg, flags );
+    if rc <> -1 then
+    begin
+      msgs.Add( msg );
+      inc( result );
+    end;
+    bRcvMore := RcvMore;
+  end;
+end;
+
 // receive multipart message. the result is the number of messages received.
 function TZMQSocket.recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer;
 var
@@ -1439,7 +1776,8 @@ begin
   {$else}
   fContext := zmq_init( io_threads );
   {$endif}
-  fLinger := -2;
+  //fLinger := -2;
+  fLinger := 0;
   if ContextPtr = nil then
     raise EZMQException.Create;
   fSockets := TList.Create;
@@ -1469,10 +1807,11 @@ begin
 
   i := 0;
   while i < fSockets.Count do
-  if TZMQSocket(fSockets[i]).fThreadId = fThreadId then
-    TZMQSocket(fSockets[i]).Free
-  else
+  begin
+    if TZMQSocket(fSockets[i]).fThreadId = fThreadId then
+      TZMQSocket(fSockets[i]).Free;
     Inc( i );
+  end;
 
   Terminate;
   {$ifdef zmq3}
@@ -1699,6 +2038,8 @@ begin
   try
     result.socket := fPollSocket[indx];
     Byte(result.events) := fPollItem[indx].events;
+    Byte(result.revents) := fPollItem[indx].revents;
+
   finally
     LeaveCriticalSection( cs );
   end;
@@ -1936,6 +2277,12 @@ begin
     pc := lpollNumber
   else
     raise EZMQException.Create( 'wrong pollCount parameter.' );
+
+  {$ifndef zmq3}
+  if timeout <> -1 then
+    timeout := timeout * 1000;
+  {$endif}
+
   result := zmq_poll( fPollItem[0], pc, timeout );
   if result < 0 then
     raise EZMQException.Create

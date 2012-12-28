@@ -34,6 +34,9 @@ type
     procedure SetIOThreads;
     procedure SetMaxSockets;
     {$endif}
+
+    procedure CreateReqSocket;
+    procedure lazyPirateBugTest;
   end;
 
 implementation
@@ -59,11 +62,62 @@ begin
       //CheckEquals( True, FZMQSocket.Terminated, 'Socket has not terminated! socket type: ' + IntToStr( Ord( st ) ) );
 
     finally
-      context := TZMQContext.Create;
+      context := nil;
 
       //FZMQsocket.Free;
     end;
   end;
+end;
+
+procedure TContextTestCase.CreateReqSocket;
+var
+  s: TZMQSocket;
+  p: TZMQPoller;
+begin
+  s := context.Socket( streq );
+  p := TZMQPoller.Create( true );
+  s.connect( 'tcp://127.0.0.1:5555' );
+  s.send('hhhh');
+  p.Register( s , [pepollin] );
+  p.poll(1000);
+  p.Free;
+
+  s.linger := 0;
+  s.Free;
+
+  context.Free;
+  context := nil;
+end;
+
+procedure TContextTestCase.lazyPirateBugTest;
+var
+  sclient,
+  sserver: TZMQSocket;
+begin
+  sserver := context.Socket( stRep );
+  sserver.bind( 'tcp://*:5555' );
+
+  sclient := context.Socket( stReq );
+  sclient.connect( 'tcp://localhost:5555' );
+  sclient.send('request1');
+
+  sleep(500);
+  sclient.Free;
+
+  sclient := context.Socket( stReq );
+  sclient.connect( 'tcp://localhost:5555' );
+  sclient.send('request1');
+
+
+  sclient.Free;
+  sleep(500);
+
+  sserver.Free;
+  sleep(500);
+
+  context.Free;
+  context := nil;
+
 end;
 
 procedure TContextTestCase.SetUp;

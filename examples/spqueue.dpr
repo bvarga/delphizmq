@@ -23,7 +23,7 @@ var
   rc,pc: Integer;
   msg: TZMQMsg;
   identity,
-  frame: TZMQMessage;
+  frame: TZMQFrame;
 begin
   ctx := TZMQContext.create;
   frontend := ctx.Socket( stRouter );

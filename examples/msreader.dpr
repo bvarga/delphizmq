@@ -16,7 +16,7 @@ var
   subscriber: TZMQSocket;
   rc: Boolean;
   task,
-  update: TZMQMessage;
+  update: TZMQFrame;
 begin
   //  Prepare our context and sockets
   context := TZMQContext.Create;
@@ -36,7 +36,7 @@ begin
   begin
     //  Process any waiting tasks
     repeat
-      task := TZMQMessage.create;
+      task := nil;
       try
         receiver.recv( task, [rfDontWait] );
         rc := true;
@@ -51,7 +51,7 @@ begin
     until rc;
     //  Process any waiting weather updates
     repeat
-      update := TZMQMessage.Create;
+      update := nil;
       Try
         subscriber.recv( update, [rfDontWait] );
         rc := true;

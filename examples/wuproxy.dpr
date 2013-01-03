@@ -13,7 +13,7 @@ var
   context: TZMQContext;
   frontend,
   backend: TZMQSocket;
-  msg: TZMQMessage;
+  frame: TZMQFrame;
   more: Boolean;
 begin
   context := TZMQContext.Create;
@@ -34,16 +34,15 @@ begin
   begin
     while True do
     begin
-      msg := TZMQMessage.Create;
+      frame := TZMQFrame.Create;
 
       //  Process all parts of the message
-      frontend.recv( msg );
+      frontend.recv( frame );
       more := frontend.rcvMore;
       if more then
-        backend.send( msg, [sfSndMore] )
+        backend.send( frame, [sfSndMore] )
       else
-        backend.send( msg, [] );
-      msg.free;
+        backend.send( frame, [] );
       if not more then
         break;      //  Last message part
     end;

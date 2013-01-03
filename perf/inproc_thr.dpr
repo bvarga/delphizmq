@@ -33,7 +33,7 @@ var
 procedure worker( cntx: TZMQContext );
 var
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
   i: Integer;
 begin
   socket := cntx.Socket( stPush );
@@ -41,19 +41,17 @@ begin
 
   for i := 0 to msgcount - 1 do
   begin
-    msg := TZMQMessage.create( msgsize );
+    msg := TZMQFrame.create( msgsize );
     FillMemory( msg.data, msgsize, 0 );
     socket.send( msg );
-    msg.Free;
   end;
   socket.Free;
-
 end;
 
 var
   context: TZMQContext;
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
   tid: Cardinal;
   i: Integer;
 
@@ -87,7 +85,7 @@ begin
   if localThread = 0 then
     raise Exception.Create( 'error in BeginThread' );
 
-  msg := TZMQMessage.create;
+  msg := TZMQFrame.create;
 
   Writeln( Format('message size: %d [B]', [msgsize] ) );
   Writeln( Format('message count: %d', [msgcount] ) );

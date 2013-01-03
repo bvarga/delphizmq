@@ -95,7 +95,7 @@ var
   rc,timeout: Integer;
   msg: TZMQMsg;
   identity,
-  frame: TZMQMessage;
+  frame: TZMQFrame;
   data: Utf8String;
   reroutable,
   random_peer: Integer;
@@ -273,7 +273,7 @@ begin
       begin
         //  Route to random broker peer
         random_peer := random( ParamCount - 2 ) + 2;
-        identity := TZMQMessage.create;
+        identity := TZMQFrame.create;
         identity.asUtf8String := ParamStr(  random_peer );
         msg.push( identity );
         cloudbe.send( msg );

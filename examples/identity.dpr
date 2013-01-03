@@ -16,7 +16,6 @@ var context: TZMQContext;
     sink
   , anonymous
   , identified: TZMQSocket;
-    msg: TStringList;
 begin
   context := TZMQContext.create;
   sink := context.Socket( stRouter );

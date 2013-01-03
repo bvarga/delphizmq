@@ -32,7 +32,7 @@ var
 
   context: TZMQContext;
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
   i: Integer;
 begin
   if ParamCount <> 3 then
@@ -49,15 +49,14 @@ begin
   socket := context.Socket( stRep );
   socket.bind( bindto );
 
-  msg := TZMQMessage.create( msgsize );
   for i := 0 to roundtripcount -1 do
   begin
+    msg := TZMQFrame.create( msgsize );
     if socket.recv( msg ) <> msgsize then
       raise Exception.Create( 'message of incorrect size received' );
     socket.send( msg );
   end;
 
-  msg.Free;
   socket.Free;
   context.Free;
 end.

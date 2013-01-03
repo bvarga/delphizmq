@@ -33,7 +33,7 @@ var
 
   context: TZMQContext;
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
   i: Integer;
   elapsed,
   latency: Real;
@@ -57,7 +57,7 @@ begin
   socket := context.Socket( stReq );
   socket.connect( connectto );
 
-  msg := TZMQMessage.create( msgsize );
+  msg := TZMQFrame.create( msgsize );
 
   QueryPerformanceFrequency( fFrequency );
   QueryPerformanceCounter( fStart );

@@ -34,28 +34,26 @@ var
 procedure worker( cntx: TZMQContext );
 var
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
   i: Integer;
 begin
   socket := cntx.Socket( stRep );
   socket.connect( 'inproc://lat_test' );
 
-  msg := TZMQMessage.create;
+  msg := nil;
   for i := 0 to roundtripcount - 1 do
   begin
     socket.recv( msg );
     socket.send( msg );
   end;
-  msg.Free;
   socket.Free;
-
 end;
 
 var
 
   context: TZMQContext;
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
   tid: Cardinal;
   i: Integer;
 
@@ -88,7 +86,7 @@ begin
   if localThread = 0 then
     raise Exception.Create( 'error in BeginThread' );
 
-  msg := TZMQMessage.create( msgsize );
+  msg := TZMQFrame.create( msgsize );
   FillMemory( msg.data, msgsize, 0 );
 
   Writeln( Format('message size: %d [B]', [msgsize] ) );

@@ -33,7 +33,7 @@ var
 
   context: TZMQContext;
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
   i: Integer;
 
 begin
@@ -53,14 +53,11 @@ begin
 
   for i := 0 to msgcount - 1 do
   begin
-    msg := TZMQMessage.create( msgsize );
+    msg := TZMQFrame.create( msgsize );
     FillMemory( msg.data, msgsize, 0 );
     socket.send( msg );
-    msg.Free;
   end;
 
   socket.Free;
   context.Free;
-
-
 end.

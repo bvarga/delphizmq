@@ -18,7 +18,7 @@ var
   ctx: TZMQContext;
   worker: TZMQSocket;
   identity: String;
-  frame: TZMQMessage;
+  frame: TZMQFrame;
   cycles: Integer;
   msg: TZMQMsg;
 begin
@@ -33,10 +33,9 @@ begin
 
   //  Tell broker we're ready for work
   Writeln( Format( 'I: (%s) worker ready', [identity] ) );
-  frame := TZMQMessage.create;
+  frame := TZMQFrame.create;
   frame.asUtf8String := WORKER_READY;
   worker.send( frame );
-  frame.Free;
   cycles := 0;
   while not ctx.Terminated do
   begin

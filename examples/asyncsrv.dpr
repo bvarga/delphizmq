@@ -107,7 +107,7 @@ var
   worker: TZMQSocket;
   msg: TZMQMsg;
   identity,
-  content: TZMQMessage;
+  content: TZMQFrame;
   i,replies: Integer;
 begin
   ctx := args;

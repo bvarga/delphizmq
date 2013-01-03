@@ -12,8 +12,8 @@ uses
 var
   context: TZMQContext;
   socket: TZMQSocket;
-  msg: TZMQMessage;
-
+  frame: TZMQFrame;
+  rc: Integer;
 
 begin
 //  IsMultiThread := True;
@@ -21,27 +21,28 @@ begin
   context := TZMQContext.Create;
   socket := Context.Socket( stRep );
   socket.bind( 'tcp://*:5555' );
-  {$ifndef unix}
-  socket.RcvTimeout := 20;
-  {$endif}
+
   while True do
   begin
-
-      //  Blocking read will exit on a signal
-      // it's not true on windows. :(
-      msg := TZMQMessage.Create;
-      try
-        socket.recv( msg );
-      except
-      end;
-      
-      if socket.context.Terminated then
+    frame := TZMQFrame.Create;
+    try
+      socket.recv( frame );
+    except
+      on e: EZMQException  do
       begin
-        Writeln( 'W: interrupt received, killing server...');
-        break;
+        Writeln('Exception: ' + e.Message );
       end;
+    end;
+    FreeAndNil( frame );
+
+    if socket.context.Terminated then
+    begin
+      Writeln( 'W: interrupt received, killing server...');
+      break;
+    end;
 
   end;
   socket.Free;
   context.Free;
+  sleep(1000);
 end.

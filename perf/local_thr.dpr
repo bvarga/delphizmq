@@ -33,7 +33,7 @@ var
 
   context: TZMQContext;
   socket: TZMQSocket;
-  msg: TZMQMessage;
+  msg: TZMQFrame;
 
   fFrequency,
   fstart,
@@ -59,7 +59,7 @@ begin
   socket := context.Socket( stPull );
   socket.bind( bindto );
 
-  msg := TZMQMessage.create;
+  msg := TZMQFrame.create;
   if socket.recv( msg ) <> msgsize then
     raise Exception.Create('message of incorrect size received');
 

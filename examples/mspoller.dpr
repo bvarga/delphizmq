@@ -15,7 +15,7 @@ var
   receiver,
   subscriber: TZMQSocket;
   i,pc: Integer;
-  task: TZMQMessage;
+  task: TZMQFrame;
   poller: TZMQPoller;
   pollResult: TZMQPollItem;
 begin
@@ -36,10 +36,11 @@ begin
   poller.Register( receiver, [pePollIn] );
   poller.Register( subscriber, [pePollIn] );
 
+  task := nil;
+
   //  Process messages from both sockets
   while True do
   begin
-    task := TZMQMessage.create;
     pc := poller.poll;
     for i := 0 to pc - 1 do
     begin
@@ -47,7 +48,7 @@ begin
       if pePollIn in pollResult.events then
         pollResult.socket.recv( task );
     end;
-    task.Free;
+    FreeAndNil( task );
   end;
   //  We never get here
   poller.Free;

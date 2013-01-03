@@ -14,7 +14,7 @@ var
   frontend,
   backend: TZMQSocket;
   poller: TZMQPoller;
-  msg: TZMQMessage;
+  frame: TZMQFrame;
   more: Boolean;
   i,pc: Integer;
   pollResult: TZMQPollItem;
@@ -50,14 +50,13 @@ begin
       while more do
       begin
         //  Process all parts of the message
-        msg := TZMQMessage.Create;
-        pollResult.socket.recv( msg );
+        frame := TZMQFrame.Create;
+        pollResult.socket.recv( frame );
         more := pollResult.socket.rcvMore;
         if more then
-          otherSocket.send( msg, [sfSndMore] )
+          otherSocket.send( frame, [sfSndMore] )
         else
-          otherSocket.send( msg, [] );
-       msg.Free;
+          otherSocket.send( frame, [] );
       end;
 
     end;

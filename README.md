@@ -76,7 +76,7 @@ Receiving messages is as easy as
     // this will add message parts to the stringlist, and returns
     // the count of the messages received.
 
-CTRL+C Handling
+**CTRL+C Handling**
   
 it's a bit tricky. On windows signal handling is different, than in posix systems.
 Blocking calls won't receive SIGINT, just block continously. To overcome this issue,

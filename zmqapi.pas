@@ -216,7 +216,7 @@ type
 
   TZMQEvent = record
     event: TZMQMonitorEvent;
-    addr: String;
+    addr: AnsiString;
     case TZMQMonitorEvent of
       meConnected,
       meListening,
@@ -245,7 +245,7 @@ type
   TZMQMonitorRec = record
     terminated: Boolean;
     context: TZMQContext;
-    addr: String;
+    addr: AnsiString;
     proc: TZMQMonitorProc;
   end;
 
@@ -275,16 +275,16 @@ type
     function send( var msg: TZMQFrame; flags: Integer = 0 ): Integer; overload;
     function recv( var msg: TZMQFrame; flags: Integer = 0 ): Integer; overload;
   public
-    procedure bind( addr: String );
-    procedure connect( addr: String );
+    procedure bind( addr: AnsiString );
+    procedure connect( addr: AnsiString );
     {$ifdef zmq3}
-    procedure unbind( addr: String );
-    procedure disconnect( addr: String );
+    procedure unbind( addr: AnsiString );
+    procedure disconnect( addr: AnsiString );
     {$endif}
 
   // helpers
   private
-    procedure CheckResult( rc: Integer );
+    function CheckResult( rc: Integer ): Integer;
     function getSockOptInt64( option: Integer ): Int64;
     function getSockOptInteger( option: Integer ): Integer;
     procedure setSockOptInt64( option: Integer; const Value: Int64 );
@@ -322,7 +322,7 @@ type
     procedure setMulticastHops( const Value: Integer );
     function getIPv4Only: Boolean;
     procedure setIPv4Only( const Value: Boolean );
-    function getLastEndpoint: String;
+    function getLastEndpoint: AnsiString;
     function getKeepAlive: TZMQKeepAlive;
     procedure setKeepAlive( const Value: TZMQKeepAlive );
     function getKeepAliveIdle: Integer;
@@ -331,8 +331,9 @@ type
     procedure setKeepAliveCnt( const Value: Integer );
     function getKeepAliveIntvl: Integer;
     procedure setKeepAliveIntvl( const Value: Integer );
-    function getAcceptFilter( indx: Integer ): String;
-    procedure setAcceptFilter( indx: Integer; const Value: String );
+    function getAcceptFilter( indx: Integer ): AnsiString;
+    procedure setAcceptFilter( indx: Integer; const Value: AnsiString );
+    procedure setRouterMandatory( const Value: Boolean );
     {$else}
     function getSwap: Int64;
     function getRecoveryIvlMSec: Int64;
@@ -356,15 +357,15 @@ type
     procedure setReconnectIvlMax( const Value: Integer );
     procedure setBacklog( const Value: Integer );
 
-    procedure Subscribe( filter: String );
-    procedure unSubscribe( filter: String );
+    procedure Subscribe( filter: AnsiString );
+    procedure unSubscribe( filter: AnsiString );
 
     function send( var msg: TZMQFrame; flags: TZMQSendFlags = [] ): Integer; overload;
     function send( strm: TStream; size: Integer; flags: TZMQSendFlags = [] ): Integer; overload;
-    function send( msg: String; flags: TZMQSendFlags = [] ): Integer; overload;
+    function send( msg: Utf8String; flags: TZMQSendFlags = [] ): Integer; overload;
 
     function send( var msgs: TZMQMsg; dontwait: Boolean = false ): Integer; overload;
-    function send( msg: Array of String; dontwait: Boolean = false ): Integer; overload;
+    function send( msg: Array of Utf8String; dontwait: Boolean = false ): Integer; overload;
     function send( msg: TStrings; dontwait: Boolean = false ): Integer; overload;
     {$ifdef zmq3}
     function sendBuffer( const Buffer; len: Size_t; flags: TZMQSendFlags = [] ): Integer;
@@ -372,7 +373,7 @@ type
 
     function recv( msg: TZMQFrame; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer; overload;
-    function recv( var msg: String; flags: TZMQRecvFlags = [] ): Integer; overload;
+    function recv( var msg: Utf8String; flags: TZMQRecvFlags = [] ): Integer; overload;
 
     function recv( var msgs: TZMQMsg; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer; overload;
@@ -393,14 +394,16 @@ type
     property MaxMsgSize: Int64 read getMaxMsgSize write setMaxMsgSize;
     property MulticastHops: Integer read getMulticastHops write setMulticastHops;
     property IPv4Only: Boolean read getIPv4Only write setIPv4Only;
-    property LastEndpoint: String read getLastEndpoint;
+    property LastEndpoint: AnsiString read getLastEndpoint;
     property KeepAlive: TZMQKeepAlive read getKeepAlive write setKeepAlive;
     property KeepAliveIdle: Integer read getKeepAliveIdle write setKeepAliveIdle;
     property KeepAliveCnt: Integer read getKeepAliveCnt write setKeepAliveCnt;
     property KeepAliveIntvl: Integer read getKeepAliveIntvl write setKeepAliveIntvl;
 
-    procedure AddAcceptFilter( addr: String );
-    property AcceptFilter[indx: Integer]: String read getAcceptFilter write setAcceptFilter;
+    procedure AddAcceptFilter( addr: AnsiString );
+    property AcceptFilter[indx: Integer]: AnsiString read getAcceptFilter write setAcceptFilter;
+
+    property RouterMandatory: Boolean write setRouterMandatory;
     {$else}
     property Swap: Int64 read getSwap write setSwap;
     property RecoveryIvlMSec: Int64 read getRecoveryIvlMSec write setRecoveryIvlMSec;
@@ -481,7 +484,7 @@ type
     fContext: TZMQContext;
     fOwnContext: Boolean;
     sPair: TZMQSocket;
-    fAddr: String;
+    fAddr: AnsiString;
 
     fPollItem: array of zmq.pollitem_t;
     fPollSocket: array of TZMQSocket;
@@ -538,21 +541,11 @@ type
 
   procedure ZMQTerminate;
 
-  // for threadSafe logging to the console.
-  procedure ZMQNote( str: String );
-
 implementation
 
 var
   contexts: TList;
   cs: TRTLCriticalSection;
-
-procedure ZMQNote( str: String );
-begin
-  EnterCriticalSection( cs );
-  Writeln( str );
-  LeaveCriticalSection( cs );
-end;
 
 {$ifndef UNIX}
 function console_handler( dwCtrlType: DWORD ): BOOL; stdcall; forward;
@@ -922,11 +915,16 @@ begin
   fSocket := nil;
 end;
 
-procedure TZMQSocket.CheckResult( rc: Integer );
+function TZMQSocket.CheckResult( rc: Integer ): Integer;
+var
+  errn: Integer;
 begin
+  result := rc;
   if rc = -1 then
   begin
-    raise EZMQException.Create;
+    errn := zmq_errno;
+    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
+      raise EZMQException.Create( errn );
   end else
   if rc <> 0 then
     raise EZMQException.Create('Function result is not 0, or -1!');
@@ -943,25 +941,25 @@ begin
   CheckResult( zmq_getsockopt( SocketPtr, option, optval, optvallen ) );
 end;
 
-procedure TZMQSocket.bind( addr: String );
+procedure TZMQSocket.bind( addr: AnsiString );
 begin
-  CheckResult( zmq_bind( SocketPtr, PAnsiChar( AnsiString( addr ) ) ) );
+  CheckResult( zmq_bind( SocketPtr, PAnsiChar( addr ) ) );
 end;
 
-procedure TZMQSocket.connect( addr: String );
+procedure TZMQSocket.connect( addr: AnsiString );
 begin
-  CheckResult(  zmq_connect( SocketPtr, PAnsiChar( AnsiString( addr ) ) ) );
+  CheckResult(  zmq_connect( SocketPtr, PAnsiChar( addr ) ) );
 end;
 
 {$ifdef zmq3}
-procedure TZMQSocket.unbind( addr: String );
+procedure TZMQSocket.unbind( addr: AnsiString );
 begin
-  CheckResult( zmq_unbind( SocketPtr, PAnsiChar( AnsiString( addr ) ) ) );
+  CheckResult( zmq_unbind( SocketPtr, PAnsiChar( addr ) ) );
 end;
 
-procedure TZMQSocket.disconnect( addr: String );
+procedure TZMQSocket.disconnect( addr: AnsiString );
 begin
-  CheckResult( zmq_disconnect( SocketPtr, PAnsiChar( AnsiString( addr ) ) ) );
+  CheckResult( zmq_disconnect( SocketPtr, PAnsiChar( addr ) ) );
 end;
 {$endif}
 
@@ -1173,7 +1171,7 @@ begin
   setSockOptInteger( ZMQ_IPV4ONLY, Integer(Value) );
 end;
 
-function TZMQSocket.getLastEndpoint: String;
+function TZMQSocket.getLastEndpoint: AnsiString;
 var
   s: ShortString;
   optvallen: size_t;
@@ -1224,7 +1222,7 @@ begin
   setSockOptInteger( ZMQ_TCP_KEEPALIVE_INTVL, Value );
 end;
 
-procedure TZMQSocket.AddAcceptFilter( addr: String );
+procedure TZMQSocket.AddAcceptFilter( addr: AnsiString );
 begin
   try
     setSockOpt( ZMQ_TCP_ACCEPT_FILTER, @addr[1], Length( addr ) );
@@ -1234,14 +1232,14 @@ begin
   end;
 end;
 
-function TZMQSocket.getAcceptFilter( indx: Integer ): String;
+function TZMQSocket.getAcceptFilter( indx: Integer ): AnsiString;
 begin
   if ( indx < 0 ) or ( indx >= fAcceptFilter.Count ) then
     raise EZMQException.Create( '[getAcceptFilter] Index out of bounds.' );
   result := fAcceptFilter[indx];
 end;
 
-procedure TZMQSocket.setAcceptFilter( indx: Integer; const Value: String );
+procedure TZMQSocket.setAcceptFilter( indx: Integer; const Value: AnsiString );
 var
   i,num: Integer;
 begin
@@ -1271,6 +1269,17 @@ begin
   end;
   if num <> 0 then
     raise EZMQException.Create( num );
+end;
+
+procedure TZMQSocket.setRouterMandatory( const Value: Boolean );
+var
+  i: Integer;
+begin
+  if Value then
+    i := 1
+  else
+    i := 0;
+  setSockOptInteger( ZMQ_ROUTER_MANDATORY, i );
 end;
 
 {$else}
@@ -1394,68 +1403,72 @@ begin
   setSockOptInteger( ZMQ_BACKLOG, Value );
 end;
 
-procedure TZMQSocket.subscribe( filter: String );
-var
-  sFilter: AnsiString;
+procedure TZMQSocket.subscribe( filter: AnsiString );
 begin
-  sFilter := AnsiString( filter );
-  if sfilter = '' then
+  if filter = '' then
     setSockOpt( ZMQ_SUBSCRIBE, nil, 0 )
   else
-    setSockOpt( ZMQ_SUBSCRIBE, @sfilter[1], Length( sfilter ) );
+    setSockOpt( ZMQ_SUBSCRIBE, @filter[1], Length( filter ) );
 end;
 
-procedure TZMQSocket.unSubscribe( filter: String );
-var
-  sFilter: AnsiString;
+procedure TZMQSocket.unSubscribe( filter: AnsiString );
 begin
-  sFilter := AnsiString( filter );
-  if sfilter = '' then
+  if filter = '' then
     setSockOpt( ZMQ_UNSUBSCRIBE, nil, 0 )
   else
-    setSockOpt( ZMQ_UNSUBSCRIBE, @sfilter[1], Length( sfilter ) );
+    setSockOpt( ZMQ_UNSUBSCRIBE, @filter[1], Length( filter ) );
 end;
 
 {$ifdef zmq3}
 function TZMQSocket.sendBuffer( const Buffer; len: Size_t; flags: TZMQSendFlags = [] ): Integer;
+var
+  errn: Integer;
 begin
   result := zmq_send( SocketPtr, Buffer, len, Byte( flags ) );
   if result < -1 then
     raise EZMQException.Create('zmq_send return value less than -1.')
   else if result = -1 then
-    raise EZMQException.Create;
+  begin
+    errn := zmq_errno;
+    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
+      raise EZMQException.Create( errn );
+  end;
 end;
 {$endif}
 
+// sends the msg, and FreeAndNils it if successful. the return value is the number of
+// bytes in the msg if successful, if not returns -1, and the msgs is not discarded.
 function TZMQSocket.send( var msg: TZMQFrame; flags: Integer = 0 ): Integer;
-{$ifdef debug}
 var
-  lmsgsize: integer;
-{$endif}
+  errn: Integer;
 begin
   {$ifdef zmq3}
-  {$ifdef debug}
-  lmsgsize := msg.size;
-  {$endif}
-
   result := zmq_sendmsg( SocketPtr, msg.fMessage, flags );
   //result := zmq_msg_send( msg.fMessage, SocketPtr, flags );
-  FreeAndNil( msg );
 
   if result < -1 then
     raise EZMQException.Create('zmq_sendmsg return value less than -1.')
   else if result = -1 then
-    raise EZMQException.Create
-  else begin
-    {$ifdef debug}
-    if result <> lmsgsize then
-      raise EZMQException.Create('return value of zmq_sendmsg and msg size is not equal.');
-    {$endif}
-  end;
+  begin
+    errn := zmq_errno;
+    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
+      raise EZMQException.Create( errn );
+  end else
+    FreeAndNil( msg );
   {$else}
   result := msg.size;
-  CheckResult( zmq_send( SocketPtr, msg.fMessage, flags ) );
-  FreeAndNil( msg );
+  try
+  if CheckResult( zmq_send( SocketPtr, msg.fMessage, flags ) ) = 0 then
+    FreeAndNil( msg )
+  else
+    result := -1;
+  except
+    on e: Exception do
+    begin
+      result := -1;
+      raise;
+    end;
+  end;
   {$endif}
 end;
 
@@ -1470,31 +1483,40 @@ end;
 // depending on the flags.
 function TZMQSocket.send( strm: TStream; size: Integer; flags: TZMQSendFlags = [] ): Integer;
 var
-  zmqMsg: TZMQFrame;
+  frame: TZMQFrame;
 begin
-  zmqMsg := TZMQFrame.Create( size );
-  strm.Read( zmqMsg.data^, size );
-  result := send( zmqMsg, flags );
+  frame := TZMQFrame.Create( size );
+  try
+    strm.Read( frame.data^, size );
+    result := send( frame, flags );
+  finally
+    if frame <> nil then
+      frame.Free;
+  end;
 end;
 
 // send single or multipart message, in blocking or nonblocking mode,
 // depending on the flags.
-function TZMQSocket.send( msg: String; flags: TZMQSendFlags = [] ): Integer;
+function TZMQSocket.send( msg: Utf8String; flags: TZMQSendFlags = [] ): Integer;
 var
-  sStrm: TStringStream;
+  frame: TZMQFrame;
 begin
-  sStrm := TStringStream.Create( msg );
+  frame := TZMQFrame.create;
   try
-    result := send( sStrm, sStrm.Size, flags );
+    frame.asUtf8String := msg;
+    result := send( frame, flags );
   finally
-    sStrm.Free;
+    if frame <> nil then
+      frame.Free;
   end;
 end;
 
+// sends multipart message, the result is the successfully sent frame count.
 function TZMQSocket.send( var msgs: TZMQMsg; dontwait: Boolean = false ): Integer;
 var
   flags: TZMQSendFlags;
   frame: TZMQFrame;
+  rc: Integer;
 begin
   Result := 0;
   if dontwait then
@@ -1505,64 +1527,81 @@ begin
   begin
     frame := msgs.pop;
     if msgs.size = 0 then
-      send( frame, flags )
+      rc := send( frame, flags )
     else
-      send( frame, flags + [sfSndMore] );
-    inc( result );
+      rc := send( frame, flags + [sfSndMore] );
+    if rc = -1 then
+    begin
+      result := -1;
+      break;
+    end else
+      inc( result )
   end;
-  FreeAndNil( msgs );
+  if result <> -1 then
+    FreeAndNil( msgs );
 end;
 
 // send multipart message in blocking or nonblocking mode, depending on the
-// dontwait parameter. The return value is the nmber of messages sent.
-function TZMQSocket.send( msg: Array of String; dontwait: Boolean = false ): Integer;
+// dontwait parameter. The return value is the nmber of messages sent if
+// successful, if not return -1, and may raise an exception.
+function TZMQSocket.send( msg: Array of Utf8String; dontwait: Boolean = false ): Integer;
 var
-  flags: TZMQSendFlags;
+  msgs: TZMQMsg;
+  frame: TZMQFrame;
+  i: Integer;
 begin
-  Result := 0;
-  if dontwait then
-    flags := [{$ifdef zmq3}sfDontWait{$else}sfNoBlock{$endif}]
-  else
-    flags := [];
-  while result < Length( msg ) do
-  begin
-    if result = Length( msg ) - 1 then
-      send( msg[result], flags )
-    else
-      send( msg[result], flags + [sfSndMore] );
-    inc( result );
+  msgs := TZMQMsg.create;
+  try
+    for i := 0 to Length( msg ) - 1 do
+    begin
+      frame := TZMQFrame.create;
+      frame.asUtf8String := msg[i];
+      msgs.add( frame );
+    end;
+    result := send( msgs, dontwait );
+  finally
+    if msgs <> nil then
+      msgs.Free;
   end;
 end;
 
 // send multipart message in blocking or nonblocking mode, depending on the
-// dontwait parameter. The return value is the nmber of messages sent.
+// dontwait parameter.
 function TZMQSocket.send( msg: TStrings; dontwait: Boolean = false ): Integer;
 var
-  flags: TZMQSendFlags;
+  msgs: TZMQMsg;
+  frame: TZMQFrame;
+  i: Integer;
 begin
-  result := 0;
-  if dontwait then
-    flags := [{$ifdef zmq3}sfDontWait{$else}sfNoBlock{$endif}]
-  else
-    flags := [];
-  while result < msg.Count do
-  begin
-    if result = msg.Count - 1 then
-      send( msg[result], flags )
-    else
-      send( msg[result], flags + [sfSndMore] );
-    inc( result );
+  msgs := TZMQMsg.create;
+  try
+    for i := 0 to msg.Count - 1 do
+    begin
+      frame := TZMQFrame.create;
+      frame.asUtf8String := msg[i];
+      msgs.add( frame );
+    end;
+    result := send( msgs, dontwait );
+  finally
+    if msgs <> nil then
+      msgs.Free;
   end;
 end;
 
 {$ifdef zmq3}
 function TZMQSocket.recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
+var
+  errn: Integer;
 begin
   result := zmq_recv( SocketPtr, Buffer, len, Byte( flags ) );
   if result < -1 then
     raise EZMQException.Create('zmq_recv return value less than -1.')
   else if result = -1 then
-    raise EZMQException.Create;
+  begin
+    errn := zmq_errno;
+    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
+      raise EZMQException.Create( errn );
+  end;
 end;
 
 procedure MonitorProc( ZMQMonitorRec: PZMQMonitorRec );
@@ -1597,7 +1636,7 @@ begin
           inc( i );
         end;
         zmqEvent.event := TZMQMonitorEvent( i - 1 );
-        zmqEvent.addr := String( event.addr );
+        zmqEvent.addr := event.addr;
         zmqEvent.fd := event.fd;
         ZMQMonitorRec.proc( zmqEvent );
         msg.rebuild;
@@ -1669,6 +1708,7 @@ begin
     msg := TZMQFrame.Create;
   if msg.size > 0 then
     msg.rebuild;
+
   {$ifdef zmq3}
   result := zmq_recvmsg( SocketPtr, msg.fMessage, flags );
   // result := zmq_msg_recv( msg.fMessage, SocketPtr, flags );
@@ -1679,16 +1719,11 @@ begin
     errn := zmq_errno;
     if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
       raise EZMQException.Create( errn );
-  end else
-  begin
-    {$ifdef debug}
-    if result <> msg.size then
-      raise EZMQException.Create('return value of zmq_recvmsg and msg size is not equal.');
-    {$endif}
   end;
   {$else}
-  CheckResult( zmq_recv( SocketPtr, msg.fMessage, flags ) );
-  result := msg.size;
+  result := -1;
+  if CheckResult( zmq_recv( SocketPtr, msg.fMessage, flags ) ) = 0 then
+    result := msg.size;
   {$endif}
 end;
 
@@ -1699,28 +1734,27 @@ end;
 
 function TZMQSocket.recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer;
 var
-  zmqmsg: TZMQFrame;
+  frame: TZMQFrame;
 begin
-  zmqmsg := TZMQFrame.Create;
+  frame := TZMQFrame.Create;
   try
-    result := recv( zmqmsg, flags );
-    strm.Write( zmqmsg.data^, result );
+    result := recv( frame, flags );
+    strm.Write( frame.data^, result );
   finally
-    zmqmsg.Free;
+    frame.Free;
   end;
 end;
 
-function TZMQSocket.recv( var msg: String; flags: TZMQRecvFlags = [] ): Integer;
+function TZMQSocket.recv( var msg: Utf8String; flags: TZMQRecvFlags = [] ): Integer;
 var
-  sStrm: TStringStream;
+  frame: TZMQFrame;
 begin
-  sStrm := TStringStream.Create('');
+  frame := TZMQFrame.Create;
   try
-    Result := recv( sStrm, flags );
-    sStrm.Position := 0;
-    msg := sStrm.ReadString( result );
+    Result := recv( frame, flags );
+    msg := frame.asUtf8String;
   finally
-    sStrm.Free;
+    frame.Free;
   end;
 end;
 
@@ -1743,6 +1777,11 @@ begin
     begin
       msgs.Add( msg );
       inc( result );
+    end else
+    begin
+      result := -1;
+      msg.Free;
+      break;
     end;
     bRcvMore := RcvMore;
   end;
@@ -1751,21 +1790,16 @@ end;
 // receive multipart message. the result is the number of messages received.
 function TZMQSocket.recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer;
 var
-  s: String;
-  bRcvMore: Boolean;
-  rc: Integer;
+  msgs: TZMQMsg;
+  i: Integer;
 begin
-  bRcvMore := True;
-  result := 0;
-  while bRcvMore do
-  begin
-    rc := recv( s, flags );
-    if rc <> -1 then
-    begin
-      msg.Add( s );
-      inc( result );
-    end;
-    bRcvMore := RcvMore;
+  msgs := TZMQMsg.Create;
+  try
+    result := recv( msgs, flags );
+    for i := 0 to result - 1 do
+      msg.Add( msgs[i].asUtf8String );
+  finally
+    msgs.Free;
   end;
 end;
 
@@ -1780,8 +1814,8 @@ begin
   {$else}
   fContext := zmq_init( io_threads );
   {$endif}
-  //fLinger := -2;
-  fLinger := 0;
+  fLinger := -2;
+  //fLinger := 0;
   if ContextPtr = nil then
     raise EZMQException.Create;
   fSockets := TList.Create;
@@ -1824,7 +1858,7 @@ begin
   {$else}
   CheckResult( zmq_term( ContextPtr ) );
   {$endif}
-  fContext := nil;
+    fContext := nil;
   end;
 
   fSockets.Free;
@@ -1836,19 +1870,19 @@ procedure TZMQContext.Terminate;
 var
   p: Pointer;
 begin
-  fTerminated := true;
-
-  {$ifdef unix}
-  fTerminated := true;
-  {$else}
-  p := ContextPtr;
-  fContext := nil;
-  {$ifdef zmq3}
-  CheckResult( zmq_ctx_destroy( p ) );
-  {$else}
-  CheckResult( zmq_term( p ) );
-  {$endif}
-  {$endif}
+  if not Terminated then
+  begin
+    fTerminated := true;
+    {$ifndef unix}
+    p := ContextPtr;
+    fContext := nil;
+    {$ifdef zmq3}
+    CheckResult( zmq_ctx_destroy( p ) );
+    {$else}
+    CheckResult( zmq_term( p ) );
+    {$endif}
+    {$endif}
+  end;
 end;
 
 procedure TZMQContext.CheckResult( rc: Integer );
@@ -2224,7 +2258,7 @@ end;
 
 procedure TZMQPoller.Register( socket: TZMQSocket; events: TZMQPollEvents; bWait: Boolean = false );
 var
-  s: String;
+  s: Utf8String;
 begin
   if fSync then
     AddToPollItems( socket, events )
@@ -2242,7 +2276,7 @@ end;
 
 procedure TZMQPoller.DeRegister( socket: TZMQSocket; events: TZMQPollEvents; bWait: Boolean = false );
 var
-  s: String;
+  s: Utf8String;
   i: Integer;
 begin
   if fSync then
@@ -2266,7 +2300,7 @@ end;
 
 procedure TZMQPoller.setPollNumber( const Value: Integer; bWait: Boolean = false );
 var
-  s: String;
+  s: Utf8String;
 begin
   if fSync then
     fPollNumber := Value
@@ -2358,7 +2392,7 @@ var
   i: Integer;
 begin
   for i := 0 to contexts.Count - 1 do
-    TZMQContext(contexts[i]).fTerminated := True;
+    TZMQContext(contexts[i]).Terminate;
 end;
 
 procedure HandleSignal(signum: longint; si: psiginfo; sc: PSigcontext); cdecl;
@@ -2390,9 +2424,9 @@ end;
 
 {$else}
 {
-  This function is called when a CTRL_C_EVENT received, important that this
-  function is executed in a separate thread, because Terminate terminates the
-  context, which blocks until there are open sockets.
+   This function is called when a CTRL_C_EVENT received, important that this
+   function is executed in a separate thread, because Terminate terminates the
+   context, which blocks until there are open sockets.
 }
 function console_handler( dwCtrlType: DWORD ): BOOL;
 var
@@ -2413,13 +2447,8 @@ end;
 {$endif}
 
 procedure ZMQTerminate;
-var
-  i: Integer;
 begin
-  for i := 0 to contexts.Count - 1 do
-    TZMQContext(contexts[i]).Terminate;
-  while contexts.Count > 0 do
-    TZMQContext(contexts[contexts.Count-1]).Free;
+  GenerateConsoleCtrlEvent( CTRL_C_EVENT, 0 );
 end;
 
 initialization

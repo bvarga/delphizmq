@@ -672,7 +672,7 @@ procedure TSocketTestCase.SocketPair;
 var
   socketbind,
   socketconnect: TZMQSocket;
-  s: String;
+  s: Utf8String;
   tsl: TStringList;
 begin
   socketbind := context.Socket( stPair );

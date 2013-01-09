@@ -58,7 +58,7 @@ end;
 procedure TPushPullTestCase.SendString;
 var
   sPush,sPull: TZMQSocket;
-  s: String;
+  s: Utf8String;
   rc: Integer;
 begin
   sPush := context.Socket( stPush );
@@ -96,7 +96,7 @@ end;
 procedure TPushPullTestCase.SendStringThread;
 var
   sPull: TZMQSocket;
-  s: String;
+  s: Utf8String;
   rc: Integer;
   tid: Cardinal;
 begin
@@ -121,7 +121,7 @@ end;
 procedure TPushPullTestCase.SendStringThreadFirstConnect;
 var
   sPull: TZMQSocket;
-  s: String;
+  s: Utf8String;
   rc: Integer;
   tid: Cardinal;
 begin

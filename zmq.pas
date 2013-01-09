@@ -251,12 +251,14 @@ const
 {$ifdef zmq3}
   ZMQ_IPV4ONLY = 31;
   ZMQ_LAST_ENDPOINT = 32;
-  ZMQ_ROUTER_BEHAVIOR = 33;
+  ZMQ_ROUTER_MANDATORY = 33;
   ZMQ_TCP_KEEPALIVE = 34;
   ZMQ_TCP_KEEPALIVE_CNT = 35;
   ZMQ_TCP_KEEPALIVE_IDLE = 36;
   ZMQ_TCP_KEEPALIVE_INTVL = 37;
   ZMQ_TCP_ACCEPT_FILTER = 38;
+  ZMQ_DELAY_ATTACH_ON_CONNECT = 39;
+  ZMQ_XPUB_VERBOSE = 40;
 
 {*  Message options                                                           *}
   ZMQ_MORE = 1;

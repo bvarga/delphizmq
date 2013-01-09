@@ -70,7 +70,7 @@ end;
 procedure TPollTestCase.PollRegister;
 var
   sb,sc: TZMQSocket;
-  s: String;
+  s: Utf8String;
 begin
   New( zmqPollItem );
   ehandle := CreateEvent( nil, true, false, nil );

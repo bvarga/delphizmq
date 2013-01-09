@@ -76,6 +76,25 @@ Receiving messages is as easy as
     // this will add message parts to the stringlist, and returns
     // the count of the messages received.
 
+CTRL+C Handling
+  
+it's a bit tricky. On windows signal handling is different, than in posix systems.
+Blocking calls won't receive SIGINT, just block continously. To overcome this issue,
+the installed handler terminates the contexts, so blocking calls like `recv`, `poll`,
+etc... will receive `ETERM`. It's just on Windows.
+
+if you code your infinite loops like this, you can terminate cleanly.
+
+    while not context.Terminated do
+    try
+      socket.recv( msg );
+    except
+      // handle exception, or
+      context.Terminate;
+    end;
+    
+    context.Free;
+    
 **Polling**
 
 Polling can work in two different ways, let's call the first 
@@ -159,7 +178,7 @@ Monitoring Sockets ( just available in `v3.2`)
 Examples
 ========
 
-in the examples directory there are some examples translated from the guide.
+examples are in the [zguide](https://github.com/bvarga/zguide) `examples/Delphi` folder.
 
 Changes
 =======

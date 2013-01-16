@@ -1,16 +1,19 @@
 0MQ Binding for Delphi
 ======================
 
-This is a binding for [ZMQ](http://www.zeromq.org). Tested with Delphi7, BDS2006, and 
-FPC 2.6.0. (Just in Windows for now). 
+This is a binding for [ZMQ](http://www.zeromq.org). Should work with Delphi7, BDS2006, XE2 
+and FPC 2.6.0. 
 
 General
 =======
 
 The package contains a wrapper (zmq.pas) for the dll, and a higher level api (zmqapi.pas). 
-It should work with ZMQ 2.2.0, and with 3.2.0 rc1 (experimental). To use the v3.2 dll, in
+It should work with ZMQ 2.2.0, and with 3.2.2. To use the v3.2 dll, in
 zmq.inc define zmq3 (($define zmq3}). The dll's come from the 
 [official distro](http://www.zeromq.org/intro:get-the-software) 
+
+This is a work in progress, I'm trying to keep it backward compatible, but it's not always
+possible. Please open an issue if you find bugs, or have question, or proposal.
 
 Usage
 =====
@@ -36,7 +39,7 @@ constant. To create for example a REP socket, just write this:
 To send messages the api has several methods. You can send single, or Multipart messages,
 in blocking or nonblocking (in the v3 it's called dontwait) mode.
     
-    // sending a string in blocking mode(default) is just as easy as this:
+    // sending a Utf8String in blocking mode(default) is just as easy as this:
     socket.send( 'Hello' );
     
     // or in non-blocking mode
@@ -48,14 +51,14 @@ in blocking or nonblocking (in the v3 it's called dontwait) mode.
     socket.send( stream, size );
     
     // sending multipart messages.
-    // strings:
+    // Utf8Strings:
     socket.send( ['Hello','World'] );
     
     //this is equivalent to:
     socket.send( 'Hello', [rsfSndMore] );
     socket.send( 'World' );
     
-    // or use TStrings.
+    // or use TStrings. TString.Strings interpreted as Utf8Strings!
     tsl := TStringList.Create;
     tsl.Add( 'Hello' );
     tsl.Add( 'World' );
@@ -91,6 +94,8 @@ if you code your infinite loops like this, you can terminate cleanly.
     except
       // handle exception, or
       context.Terminate;
+      // if CTRL+C was pressed, on windows the context already 
+      // terminated
     end;
     
     context.Free;
@@ -158,7 +163,7 @@ version creates a thread, and do the polling there.
         
     
   
-Monitoring Sockets ( just available in `v3.2`)
+Monitoring Sockets ( just available in `v3.2.2`)
 
     // define a callback like this.
     procedure TMyClass.MonitorCallback( event: TZMQEvent );
@@ -174,7 +179,127 @@ Monitoring Sockets ( just available in `v3.2`)
     // you can deregister the monitoring with calling.
     socket.DeRegisterMonitor; 
 
+**Threads**
+
+  Similar to the czmq api. this binding also supports attached and detached thread creation. 
+  There are two ways to use this class, call the `CreateDetached` or `CreateAttached` constructors,
+  with parameters, or create your own descendent class and override the `DoExecute` method.
+  
+  - Creating a detached thread.
+  
+    procedure TMyClass.DetachedProc( args: Pointer; context: TZMQContext; terminated: PBoolean );
+    var
+      socket: TZMQSocket;
+    begin
+      socket := context.Socket( TZMQSocketType( Args^ ) );
+      Dispose( args );
+    end;
     
+    var
+      thr: TZMQThread;
+      sockettype: ^TZMQSocketType;
+    begin
+      New( sockettype );
+      sockettype^ := stDealer;
+      thr := TZMQThread.CreateDetached( DetachedProc, sockettype );
+      thr.FreeOnTerminate := true;
+      thr.Resume;
+    end;
+    
+  or
+    
+    // create descendant class
+    TMyZMQThread = class( TZMQThread )
+    protected
+      procedure doExecute; override;
+    end;
+    
+    procedure TMyZMQThread.doExecute
+    var
+      socket: TZMQSocket;
+    begin
+      // do something cool.
+      socket := Context.socket( TZMQSocketType(Args^) );
+    end;
+    
+    var
+      myThread: TMyZMQThread;
+      sockettype: ^TZMQSocketType;
+    begin
+      New( sockettype );
+      sockettype^ := stDealer;
+      
+      // the nil context means it will be a detached thread.
+      myThread := TMyZMQThread.Create( sockettype, nil );
+      myThread.Resume;
+    end;
+    
+    
+  - Creating an attached thread.
+  
+    procedure TMyClass.AttachedProc( args: Pointer; context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean );
+    var
+      socket: TZMQSocket;
+      msg: Utf8String;
+    begin
+      while not Terminated and not context.Terminated do
+      begin
+        // do some cool stuff.
+        socket := Context.socket( TZMQSocketType(Args^) );
+        
+        // you can use pipe to communicate.
+        pipe.recv( msg );
+      end;
+    end;
+    
+    var
+      thr: TZMQThread;
+      sockettype: ^TZMQSocketType;
+    begin
+      New( sockettype );
+      sockettype^ := stDealer;
+      thr := TZMQThread.CreateAttached( AttachedProc, context, sockettype );
+      thr.FreeOnTerminate := true;
+      thr.Resume;
+
+      
+      // use thr.pipe to send stuff to the thread.
+      thr.pipe.send( 'hello thread' );
+      
+  or
+    
+    // create descendant class
+    TMyZMQThread = class( TZMQThread )
+    protected
+      procedure doExecute; override;
+    end;
+    
+    procedure TMyZMQThread.doExecute
+    var
+      socket: TZMQSocket;
+      msg: Utf8String;
+    begin
+      // do something cool.
+      socket := Context.socket( TZMQSocketType(Args^) );
+      while true do
+      begin
+        pipe.recv( msg );
+      end;
+    end;
+    
+    var
+      myThread: TMyZMQThread;
+      sockettype: ^TZMQSocketType;
+    begin
+      New( sockettype );
+      sockettype^ := stDealer;
+
+      myThread := TMyZMQThread.Create( sockettype, context )
+      myThread.Resume;
+      
+      myThread.pipe.send( 'Hello thread' );
+    end;
+
 Examples
 ========
 
@@ -182,6 +307,8 @@ examples are in the [zguide](https://github.com/bvarga/zguide) `examples/Delphi`
 
 Changes
 =======
+* TZMQThread class
+* Fixed bug in context.Destroy
 * New poller class
 * poll function of TZMQPoller has a new optional parameter "pollCount".
 * Upgrade dll-s to v3.2.2 RC2

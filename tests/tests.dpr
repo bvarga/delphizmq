@@ -23,7 +23,8 @@ uses
   SocketTestCase in 'SocketTestCase.pas',
   ContextTestCase in 'ContextTestCase.pas',
   PushPullTestCase in 'PushPullTestCase.pas',
-  PollTestCase in 'PollTestCase.pas';
+  PollTestCase in 'PollTestCase.pas',
+  ThreadTestCase in 'ThreadTestCase.pas';
 
 {$R *.RES}
 

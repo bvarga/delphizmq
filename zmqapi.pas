@@ -541,6 +541,38 @@ type
 
   procedure ZMQTerminate;
 
+type
+  // Thread related functions.
+  TDetachedThreadProc = procedure( args: Pointer; context: TZMQContext; Terminated: PBoolean ) of object;
+  TAttachedThreadProc = procedure( args: Pointer; Context: TZMQContext; Pipe: TZMQSocket; Terminated: PBoolean ) of object;
+
+  TZMQThread = class( TThread )
+  private
+    //attached thread pipe
+    fPipe: TZMQSocket;
+    // attached thread pipe in the new thread.
+    thrPipe: TZMQSocket;
+
+    fDetachedProc: TDetachedThreadProc;
+    fAttachedProc: TAttachedThreadProc;
+    fContext: TZMQContext;
+    fArgs: Pointer;
+  public
+    constructor Create( lArgs: Pointer; ctx: TZMQContext );
+    constructor CreateAttached( lAttachedProc: TAttachedThreadProc; ctx: TZMQContext; lArgs: Pointer );
+    constructor CreateDetached( lDetachedProc: TDetachedThreadProc; lArgs: Pointer );
+    destructor Destroy; override;
+  protected
+    procedure Execute; override;
+    procedure DoExecute; virtual;
+
+  public
+    property Pipe: TZMQSocket read fPipe;
+    property Args: Pointer read fArgs;
+    property Context: TZMQContext read fContext;
+  end;
+
+
 implementation
 
 var
@@ -1835,8 +1867,8 @@ begin
   for i:= 0 to fSockets.Count - 1 do
     TZMQSocket(fSockets[i]).Linger := Linger;
 
-  for i := 0 to fSockets.Count - 1 do
-    TZMQSocket(fSockets[i]).Free;
+  while fSockets.Count > 0 do
+    TZMQSocket(fSockets[0]).Free;
 
   if ( fContext <> nil ) and fMainThread then
   begin
@@ -2359,6 +2391,9 @@ begin
   Byte(result.events) := fPollItem[i].revents;
 end;
 
+// Thread related functions.
+
+
 procedure ZMQProxy( frontend, backend, capture: TZMQSocket );
 var
   p: Pointer;
@@ -2446,6 +2481,61 @@ end;
 procedure ZMQTerminate;
 begin
   GenerateConsoleCtrlEvent( CTRL_C_EVENT, 0 );
+end;
+
+{ TZMQThread }
+
+constructor TZMQThread.Create( lArgs: Pointer; ctx: TZMQContext );
+begin
+  inherited Create( true );
+  fArgs := lArgs;
+  if ctx = nil then
+    fContext := TZMQContext.Create
+  else begin
+    fContext := ctx.Shadow;
+    fPipe := Context.Socket( stPair );
+    fPipe.bind( Format( 'inproc://zmqthread-pipe-', [fPipe] ) );
+  end;
+end;
+
+constructor TZMQThread.CreateAttached( lAttachedProc: TAttachedThreadProc; ctx: TZMQContext;
+  lArgs: Pointer);
+begin
+  Create( lArgs, ctx );
+  fAttachedProc := lAttachedProc;
+end;
+
+constructor TZMQThread.CreateDetached( lDetachedProc: TDetachedThreadProc; lArgs: Pointer);
+begin
+  Create( lArgs, nil );
+  fDetachedProc := lDetachedProc;
+end;
+
+destructor TZMQThread.Destroy;
+begin
+  if Context <> nil then
+    Context.Free;
+  inherited;
+end;
+
+procedure TZMQThread.DoExecute;
+begin
+  if Assigned( fAttachedProc ) then
+    fAttachedProc( fArgs, Context, thrPipe, @Terminated )
+  else
+  if Assigned( fDetachedProc ) then
+    fDetachedProc( fArgs, Context, @Terminated );
+end;
+
+procedure TZMQThread.Execute;
+begin
+  if Assigned( fAttachedProc ) then
+  begin // attached thread
+    thrPipe := Context.Socket( stPair );
+    thrPipe.connect( Format( 'inproc://zmqthread-pipe-', [fPipe] ) );
+  end;
+
+  DoExecute;
 end;
 
 initialization

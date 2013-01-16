@@ -186,119 +186,120 @@ Monitoring Sockets ( just available in `v3.2.2`)
   with parameters, or create your own descendent class and override the `DoExecute` method.
   
   - Creating a detached thread.
-  
-      procedure TMyClass.DetachedProc( args: Pointer; context: TZMQContext; terminated: PBoolean );
-      var
-        socket: TZMQSocket;
-      begin
-        socket := context.Socket( TZMQSocketType( Args^ ) );
-        Dispose( args );
-      end;
-      
-      var
-        thr: TZMQThread;
-        sockettype: ^TZMQSocketType;
-      begin
-        New( sockettype );
-        sockettype^ := stDealer;
-        thr := TZMQThread.CreateDetached( DetachedProc, sockettype );
-        thr.FreeOnTerminate := true;
-        thr.Resume;
-      end;
-    
-  or
-    
-      // create descendant class
-      TMyZMQThread = class( TZMQThread )
-      protected
-        procedure doExecute; override;
-      end;
-      
-      procedure TMyZMQThread.doExecute
-      var
-        socket: TZMQSocket;
-      begin
-        // do something cool.
-        socket := Context.socket( TZMQSocketType(Args^) );
-      end;
-      
-      var
-        myThread: TMyZMQThread;
-        sockettype: ^TZMQSocketType;
-      begin
-        New( sockettype );
-        sockettype^ := stDealer;
         
-        // the nil context means it will be a detached thread.
-        myThread := TMyZMQThread.Create( sockettype, nil );
-        myThread.Resume;
-      end;
-    
-    
-  - Creating an attached thread.
-  
-      procedure TMyClass.AttachedProc( args: Pointer; context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean );
-      var
-        socket: TZMQSocket;
-        msg: Utf8String;
-      begin
-        while not Terminated and not context.Terminated do
+        procedure TMyClass.DetachedProc( args: Pointer; context: TZMQContext; terminated: PBoolean );
+        var
+          socket: TZMQSocket;
         begin
-          // do some cool stuff.
+          socket := context.Socket( TZMQSocketType( Args^ ) );
+          Dispose( args );
+        end;
+        
+        var
+          thr: TZMQThread;
+          sockettype: ^TZMQSocketType;
+        begin
+          New( sockettype );
+          sockettype^ := stDealer;
+          thr := TZMQThread.CreateDetached( DetachedProc, sockettype );
+          thr.FreeOnTerminate := true;
+          thr.Resume;
+        end;
+        
+  or
+        
+        // create descendant class
+        TMyZMQThread = class( TZMQThread )
+        protected
+          procedure doExecute; override;
+        end;
+        
+        procedure TMyZMQThread.doExecute
+        var
+          socket: TZMQSocket;
+        begin
+          // do something cool.
           socket := Context.socket( TZMQSocketType(Args^) );
-          
-          // you can use pipe to communicate.
-          pipe.recv( msg );
         end;
-      end;
-      
-      var
-        thr: TZMQThread;
-        sockettype: ^TZMQSocketType;
-      begin
-        New( sockettype );
-        sockettype^ := stDealer;
-        thr := TZMQThread.CreateAttached( AttachedProc, context, sockettype );
-        thr.FreeOnTerminate := true;
-        thr.Resume;
-
         
-        // use thr.pipe to send stuff to the thread.
-        thr.pipe.send( 'hello thread' );
-      
-  or
-    
-      // create descendant class
-      TMyZMQThread = class( TZMQThread )
-      protected
-        procedure doExecute; override;
-      end;
-      
-      procedure TMyZMQThread.doExecute
-      var
-        socket: TZMQSocket;
-        msg: Utf8String;
-      begin
-        // do something cool.
-        socket := Context.socket( TZMQSocketType(Args^) );
-        while true do
+        var
+          myThread: TMyZMQThread;
+          sockettype: ^TZMQSocketType;
         begin
-          pipe.recv( msg );
+          New( sockettype );
+          sockettype^ := stDealer;
+          
+          // the nil context means it will be a detached thread.
+          myThread := TMyZMQThread.Create( sockettype, nil );
+          myThread.Resume;
         end;
-      end;
-      
-      var
-        myThread: TMyZMQThread;
-        sockettype: ^TZMQSocketType;
-      begin
-        New( sockettype );
-        sockettype^ := stDealer;
-
-        myThread := TMyZMQThread.Create( sockettype, context )
-        myThread.Resume;
         
-        myThread.pipe.send( 'Hello thread' );
-      end;
+        
+  - Creating an attached thread.
+        
+        procedure TMyClass.AttachedProc( args: Pointer; context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean );
+        var
+          socket: TZMQSocket;
+          msg: Utf8String;
+        begin
+          while not Terminated and not context.Terminated do
+          begin
+            // do some cool stuff.
+            socket := Context.socket( TZMQSocketType(Args^) );
+            
+            // you can use pipe to communicate.
+            pipe.recv( msg );
+          end;
+        end;
+        
+        var
+          thr: TZMQThread;
+          sockettype: ^TZMQSocketType;
+        begin
+          New( sockettype );
+          sockettype^ := stDealer;
+          thr := TZMQThread.CreateAttached( AttachedProc, context, sockettype );
+          thr.FreeOnTerminate := true;
+          thr.Resume;
+
+          
+          // use thr.pipe to send stuff to the thread.
+          thr.pipe.send( 'hello thread' );
+        end;
+        
+  or
+        
+        // create descendant class
+        TMyZMQThread = class( TZMQThread )
+        protected
+          procedure doExecute; override;
+        end;
+        
+        procedure TMyZMQThread.doExecute
+        var
+          socket: TZMQSocket;
+          msg: Utf8String;
+        begin
+          // do something cool.
+          socket := Context.socket( TZMQSocketType(Args^) );
+          while true do
+          begin
+            pipe.recv( msg );
+          end;
+        end;
+        
+        var
+          myThread: TMyZMQThread;
+          sockettype: ^TZMQSocketType;
+        begin
+          New( sockettype );
+          sockettype^ := stDealer;
+
+          myThread := TMyZMQThread.Create( sockettype, context )
+          myThread.Resume;
+          
+          myThread.pipe.send( 'Hello thread' );
+        end;
 
 Examples
 ========

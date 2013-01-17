@@ -543,8 +543,11 @@ type
 
 type
   // Thread related functions.
-  TDetachedThreadProc = procedure( args: Pointer; context: TZMQContext; Terminated: PBoolean ) of object;
-  TAttachedThreadProc = procedure( args: Pointer; Context: TZMQContext; Pipe: TZMQSocket; Terminated: PBoolean ) of object;
+  TDetachedThreadMeth = procedure( args: Pointer; context: TZMQContext ) of object;
+  TAttachedThreadMeth = procedure( args: Pointer; Context: TZMQContext; Pipe: TZMQSocket ) of object;
+
+  TDetachedThreadProc = procedure( args: Pointer; context: TZMQContext );
+  TAttachedThreadProc = procedure( args: Pointer; Context: TZMQContext; Pipe: TZMQSocket );
 
   TZMQThread = class( TThread )
   private
@@ -553,14 +556,18 @@ type
     // attached thread pipe in the new thread.
     thrPipe: TZMQSocket;
 
+    fDetachedMeth: TDetachedThreadMeth;
+    fAttachedMeth: TAttachedThreadMeth;
     fDetachedProc: TDetachedThreadProc;
     fAttachedProc: TAttachedThreadProc;
     fContext: TZMQContext;
     fArgs: Pointer;
   public
     constructor Create( lArgs: Pointer; ctx: TZMQContext );
-    constructor CreateAttached( lAttachedProc: TAttachedThreadProc; ctx: TZMQContext; lArgs: Pointer );
-    constructor CreateDetached( lDetachedProc: TDetachedThreadProc; lArgs: Pointer );
+    constructor CreateAttached( lAttachedMeth: TAttachedThreadMeth; ctx: TZMQContext; lArgs: Pointer );
+    constructor CreateDetached( lDetachedMeth: TDetachedThreadMeth; lArgs: Pointer );
+    constructor CreateAttachedProc( lAttachedProc: TAttachedThreadProc; ctx: TZMQContext; lArgs: Pointer );
+    constructor CreateDetachedProc( lDetachedProc: TDetachedThreadProc; lArgs: Pointer );
     destructor Destroy; override;
   protected
     procedure Execute; override;
@@ -716,10 +723,11 @@ begin
   iSize := size;
   if iSize = 0 then
     result := ''
-  else if Integer(data^) = 0 then
+  else if AnsiChar(data^) = #0 then
   begin
     SetLength( sutf8, iSize * 2 );
     BinToHex( data, PAnsiChar(sutf8), iSize );
+    result := sutf8;
   end else
     result := asUtf8String;
 end;
@@ -2348,7 +2356,7 @@ end;
 /// sockets polled
 function TZMQPoller.poll( timeout: Integer = -1; lPollNumber: Integer = -1 ): Integer;
 var
-  pc: Integer;
+  pc, i: Integer;
 begin
   if not fSync then
     raise EZMQException.Create('Poller hasn''t created in Synchronous mode');
@@ -2367,6 +2375,9 @@ begin
     timeout := timeout * 1000;
   {$endif}
 
+  for i := 0 to fPollItemCount - 1 do
+    fPollItem[i].revents := 0;
+    
   result := zmq_poll( fPollItem[0], pc, timeout );
   if result < 0 then
     raise EZMQException.Create
@@ -2498,14 +2509,26 @@ begin
   end;
 end;
 
-constructor TZMQThread.CreateAttached( lAttachedProc: TAttachedThreadProc; ctx: TZMQContext;
+constructor TZMQThread.CreateAttached( lAttachedMeth: TAttachedThreadMeth; ctx: TZMQContext;
   lArgs: Pointer);
+begin
+  Create( lArgs, ctx );
+  fAttachedMeth := lAttachedMeth;
+end;
+
+constructor TZMQThread.CreateDetached( lDetachedMeth: TDetachedThreadMeth; lArgs: Pointer);
+begin
+  Create( lArgs, nil );
+  fDetachedMeth := lDetachedMeth;
+end;
+
+constructor TZMQThread.CreateAttachedProc( lAttachedProc: TAttachedThreadProc; ctx: TZMQContext; lArgs: Pointer );
 begin
   Create( lArgs, ctx );
   fAttachedProc := lAttachedProc;
 end;
 
-constructor TZMQThread.CreateDetached( lDetachedProc: TDetachedThreadProc; lArgs: Pointer);
+constructor TZMQThread.CreateDetachedProc( lDetachedProc: TDetachedThreadProc; lArgs: Pointer );
 begin
   Create( lArgs, nil );
   fDetachedProc := lDetachedProc;
@@ -2520,11 +2543,18 @@ end;
 
 procedure TZMQThread.DoExecute;
 begin
+  if Assigned( fAttachedMeth ) then
+    fAttachedMeth( fArgs, Context, thrPipe )
+  else
+  if Assigned( fDetachedMeth ) then
+    fDetachedMeth( fArgs, Context )
+  else
   if Assigned( fAttachedProc ) then
-    fAttachedProc( fArgs, Context, thrPipe, @Terminated )
+    fAttachedProc( fArgs, Context, thrPipe )
   else
   if Assigned( fDetachedProc ) then
-    fDetachedProc( fArgs, Context, @Terminated );
+    fDetachedProc( fArgs, Context );
+
 end;
 
 procedure TZMQThread.Execute;

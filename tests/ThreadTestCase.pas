@@ -41,12 +41,10 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
 
-    procedure DetachedTestProc( args: Pointer; context: TZMQContext; terminated: PBoolean );
-    procedure AttachedTestProc( args: Pointer; context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean );
+    procedure DetachedTestMeth( args: Pointer; context: TZMQContext );
+    procedure AttachedTestMeth( args: Pointer; context: TZMQContext; pipe: TZMQSocket );
 
-    procedure AttachedPipeTestProc( args: Pointer; context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean );
-
-    procedure Detached2TestProc( args: Pointer; context: TZMQContext; terminated: PBoolean );
+    procedure AttachedPipeTestMeth( args: Pointer; context: TZMQContext; pipe: TZMQSocket );
 
     procedure InheritedThreadTerminate( Sender: TObject );
 
@@ -57,7 +55,6 @@ type
     procedure CreateInheritedAttachedTest;
     procedure CreateInheritedDetachedTest;
 
-    procedure CreateDetached2Test;
 
     procedure AttachedPipeTest;
   end;
@@ -99,7 +96,7 @@ begin
   CloseHandle( ehandle );
 end;
 
-procedure TThreadTestCase.AttachedTestProc( args: Pointer; context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean );
+procedure TThreadTestCase.AttachedTestMeth( args: Pointer; context: TZMQContext; pipe: TZMQSocket );
 begin
   tvar := true;
   SetEvent( ehandle );
@@ -109,7 +106,7 @@ procedure TThreadTestCase.CreateAttachedTest;
 var
   thr: TZMQThread;
 begin
-  thr := TZMQThread.CreateAttached( AttachedTestProc, context, nil );
+  thr := TZMQThread.CreateAttached( AttachedTestMeth, context, nil );
   thr.FreeOnTerminate := true;
   thr.Resume;
 
@@ -118,7 +115,7 @@ begin
 
 end;
 
-procedure TThreadTestCase.DetachedTestProc( args: Pointer; context: TZMQContext; terminated: PBoolean );
+procedure TThreadTestCase.DetachedTestMeth( args: Pointer; context: TZMQContext );
 var
   socket: TZMQSocket;
 begin
@@ -135,7 +132,7 @@ var
 begin
   New( sockettype );
   sockettype^ := stDealer;
-  thr := TZMQThread.CreateDetached( DetachedTestProc, sockettype );
+  thr := TZMQThread.CreateDetached( DetachedTestMeth, sockettype );
   thr.FreeOnTerminate := true;
   thr.Resume;
 
@@ -174,36 +171,8 @@ begin
 
 end;
 
-procedure TThreadTestCase.Detached2TestProc( args: Pointer; context: TZMQContext;
-  terminated: PBoolean );
-begin
-  while not Terminated^ do
-  begin
-    // do something.
-    inc( tmpI );
-  end;
-  SetEvent( ehandle );
-end;
-
-procedure TThreadTestCase.CreateDetached2Test;
-var
-  thr: TZMQThread;
-begin
-
-  thr := TZMQThread.CreateDetached( Detached2TestProc, nil );
-  thr.FreeOnTerminate := true;
-  thr.Resume;
-
-  sleep(10);
-  thr.Terminate;
-
-  WaitForSingleObject( ehandle, INFINITE );
-  CheckTrue( tmpI > 100, 'thread cycles less than 100' );
-
-end;
-
-procedure TThreadTestCase.AttachedPipeTestProc(args: Pointer;
-  context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean);
+procedure TThreadTestCase.AttachedPipeTestMeth(args: Pointer;
+  context: TZMQContext; pipe: TZMQSocket );
 begin
   pipe.recv( tmpS );
   SetEvent( ehandle );
@@ -213,7 +182,7 @@ procedure TThreadTestCase.AttachedPipeTest;
 var
   thr: TZMQThread;
 begin
-  thr := TZMQThread.CreateAttached( AttachedPipeTestProc, context, nil );
+  thr := TZMQThread.CreateAttached( AttachedPipeTestMeth, context, nil );
   thr.FreeOnTerminate := true;
   thr.Resume;
 

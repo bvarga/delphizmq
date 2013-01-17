@@ -187,7 +187,7 @@ Monitoring Sockets ( just available in `v3.2.2`)
   
   - Creating a detached thread.
         
-        procedure TMyClass.DetachedProc( args: Pointer; context: TZMQContext; terminated: PBoolean );
+        procedure TMyClass.DetachedMeth( args: Pointer; context: TZMQContext );
         var
           socket: TZMQSocket;
         begin
@@ -201,7 +201,7 @@ Monitoring Sockets ( just available in `v3.2.2`)
         begin
           New( sockettype );
           sockettype^ := stDealer;
-          thr := TZMQThread.CreateDetached( DetachedProc, sockettype );
+          thr := TZMQThread.CreateDetached( DetachedMeth, sockettype );
           thr.FreeOnTerminate := true;
           thr.Resume;
         end;
@@ -237,12 +237,12 @@ Monitoring Sockets ( just available in `v3.2.2`)
         
   - Creating an attached thread.
         
-        procedure TMyClass.AttachedProc( args: Pointer; context: TZMQContext; pipe: TZMQSocket; terminated: PBoolean );
+        procedure TMyClass.AttachedMeth( args: Pointer; context: TZMQContext; pipe: TZMQSocket );
         var
           socket: TZMQSocket;
           msg: Utf8String;
         begin
-          while not Terminated and not context.Terminated do
+          while not context.Terminated do
           begin
             // do some cool stuff.
             socket := Context.socket( TZMQSocketType(Args^) );
@@ -258,7 +258,7 @@ Monitoring Sockets ( just available in `v3.2.2`)
         begin
           New( sockettype );
           sockettype^ := stDealer;
-          thr := TZMQThread.CreateAttached( AttachedProc, context, sockettype );
+          thr := TZMQThread.CreateAttached( AttachedMeth, context, sockettype );
           thr.FreeOnTerminate := true;
           thr.Resume;
 

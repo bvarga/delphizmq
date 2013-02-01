@@ -15,6 +15,11 @@ procedure s_set_id( socket: TZMQSocket );
 // for threadSafe logging to the console.
 procedure zNote( str: String );
 
+function zTimeStamp: Int64;
+function zCalcTimeMs( tstart, tstop: Int64 ): Int64;
+
+function zIncTimeMs( tNow, tIncrementMs: Int64 ): Int64;
+function zIncTimeUs( tNow, tIncrementUs: Int64 ): Int64;
 
 implementation
 
@@ -23,6 +28,8 @@ uses
 
 var
   cs: TRTLCriticalSection;
+  fFrequency: Int64;
+
 
 procedure zNote( str: String );
 begin
@@ -94,12 +101,46 @@ begin
   socket.Identity := s_random( 10 );
 end;
 
+// get timestamp
+function zTimeStamp: Int64;
+begin
+  QueryPerformanceCounter( result );
+end;
+
+function zCalcTimeMs( tstart, tstop: Int64 ): Int64;
+begin
+  if fFrequency > 0 then
+    result := ( MSecsPerSec * (tstop - tstart ) ) div fFrequency
+  else
+    result := 0;
+end;
+
+function zCalcTimeUs( tstart, tstop: Int64 ): Int64;
+begin
+  if fFrequency > 0 then
+    result := ( MSecsPerSec * MSecsPerSec * (tstop - tstart ) ) div fFrequency
+  else
+    result := 0;
+end;
+
+function zIncTimeMs( tNow, tIncrementMs: Int64 ): Int64;
+begin
+  result := ( tIncrementMs * fFrequency ) div MSecsPerSec + tNow;
+end;
+
+function zIncTimeUs( tNow, tIncrementUs: Int64 ): Int64;
+begin
+  result := ( tIncrementUs * fFrequency ) div ( MSecsPerSec * MSecsPerSec )+ tNow;
+end;
+
 initialization
   {$ifdef UNIX}
   InitCriticalSection( cs );
   {$else}
   InitializeCriticalSection( cs );
   {$endif}
+  QueryPerformanceFrequency( fFrequency );
+
 
 finalization
   {$ifdef UNIX}

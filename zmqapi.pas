@@ -102,6 +102,8 @@ type
   TZMQFrame = class
   private
     fMessage: zmq_msg_t;
+    function getAsHexString: AnsiString;
+    procedure setAsHexString(const Value: AnsiString);
     procedure CheckResult( rc: Integer );
     {$ifdef zmq3}
     function getProperty( prop: TZMQMessageProperty ): Integer;
@@ -136,7 +138,7 @@ type
     procedure SaveToStream( strm: TStream );
 
     property asUtf8String: Utf8String read getAsUtf8String write setAsUtf8String;
-
+    property asHexString: AnsiString read getAsHexString write setAsHexString;
   end;
 
   // for multipart message
@@ -162,6 +164,7 @@ type
    // Set the cursor to 0
    // Returns 0 on success, -1 on error.
    function push( msg: TZMQFrame ): Integer;
+   function pushstr( str: Utf8String ): Integer;
 
    // Remove first frame from message, if any. Returns frame, or NULL. Caller
    // now owns frame and must destroy it when finished with it.
@@ -199,6 +202,9 @@ type
 
    // Create copy of message, as new message object
    function dup: TZMQMsg;
+
+   // dumpt message
+   function dump: Utf8String;
 
    procedure Clear;
    property item[indx: Integer]: TZMQFrame read getItem; default;
@@ -732,9 +738,24 @@ begin
     result := asUtf8String;
 end;
 
+function TZMQFrame.getAsHexString: AnsiString;
+begin
+  SetLength( result, size * 2 );
+  BinToHex( data, PAnsiChar(result), size );
+end;
+
 function TZMQFrame.getAsUtf8String: Utf8String;
 begin
-  SetString( result, PChar(data), size );
+  SetString( result, PAnsiChar(data), size );
+end;
+
+procedure TZMQFrame.setAsHexString( const Value: AnsiString );
+var
+  iSize: Integer;
+begin
+  iSize := Length( Value ) div 2;
+  rebuild( iSize );
+  HexToBin( PAnsiChar( value ), data, iSize );
 end;
 
 procedure TZMQFrame.setAsUtf8String( const Value: Utf8String );
@@ -795,6 +816,15 @@ begin
   except
     result := -1
   end;
+end;
+
+function TZMQMsg.pushstr( str: Utf8String ): Integer;
+var
+  frm: TZMQFrame;
+begin
+  frm := TZMQFrame.create;
+  frm.asUtf8String := str;
+  result := push( frm );
 end;
 
 function TZMQMsg.pop: TZMQFrame;
@@ -916,6 +946,18 @@ begin
   result := msgs[indx];
 end;
 
+function TZMQMsg.dump: Utf8String;
+var
+  i: Integer;
+begin
+  result := '';
+  for i := 0 to size - 1 do
+  begin
+    if i > 0 then
+      result := result + #13 + #10;
+    result := result + item[i].dump;
+  end;
+end;
 
 { TZMQSocket }
 

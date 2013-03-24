@@ -170,12 +170,13 @@ type
    // now owns frame and must destroy it when finished with it.
    // Set the cursor to 0
    function pop: TZMQFrame;
-
+   function popstr: Utf8String;
    // Add frame to the end of the message, i.e. after all other frames.
    // Message takes ownership of frame, will destroy it when message is sent.
    // Set the cursor to 0
    // Returns 0 on success
    function add( msg: TZMQFrame ): Integer;
+   function addstr( msg: Utf8String ): Integer;
 
    // Push frame plus empty frame to front of message, before first frame.
    // Message takes ownership of frame, will destroy it when message is sent.
@@ -205,6 +206,9 @@ type
 
    // dumpt message
    function dump: Utf8String;
+
+   function saveasHex: Utf8String;
+   procedure loadfromHex( data: Utf8String );
 
    procedure Clear;
    property item[indx: Integer]: TZMQFrame read getItem; default;
@@ -482,6 +486,7 @@ type
     events: TZMQPollEvents;
     revents: TZMQPollEvents;
   end;
+  TZMQPollItemA = array of TZMQPollItem;
 
   TZMQPollEventProc = procedure( socket: TZMQSocket; event: TZMQPollEvents ) of object;
   TZMQExceptionProc = procedure( exception: Exception ) of object;
@@ -538,6 +543,15 @@ type
 
   TZMQDevice = ( dStreamer, dForwarder, dQueue );
 
+  TZMQPollRec = record
+    socket: TZMQSocket;
+    events: TZMQPollEvents;
+  end;
+  TZMQPollRecA = array of TZMQPollRec;
+
+  function ZMQPoll( var pia: TZMQPollItemA; piaSize: Integer = -1; timeout: Integer = -1 ): Integer; overload;
+  function ZMQPoll( var pia: TZMQPollItem; piaSize: Integer = 1; timeout: Integer = -1 ): Integer; overload;
+
   {$ifdef zmq3}
   procedure ZMQProxy( frontend, backend, capture: TZMQSocket );
   {$endif}
@@ -546,7 +560,8 @@ type
   procedure ZMQVersion(var major, minor, patch: Integer);
 
   procedure ZMQTerminate;
-
+var
+  ZMQTerminated: Boolean = false;
 type
   // Thread related functions.
   TDetachedThreadMeth = procedure( args: Pointer; context: TZMQContext ) of object;
@@ -839,6 +854,18 @@ begin
     result := nil;
 end;
 
+function TZMQMsg.popstr: Utf8String;
+var
+  frame: TZMQFrame;
+begin
+  frame := pop;
+  try
+    result := frame.asUtf8String;
+  finally
+    frame.Free;
+  end;
+end;
+
 function TZMQMsg.add( msg: TZMQFrame ): Integer;
 begin
   try
@@ -849,6 +876,15 @@ begin
   except
     result := -1;
   end;
+end;
+
+function TZMQMsg.addstr( msg: Utf8String ): Integer;
+var
+  frame: TZMQFrame;
+begin
+  frame := TZMQFrame.create;
+  frame.asUtf8String := msg;
+  result := add( frame );
 end;
 
 procedure TZMQMsg.wrap( msg: TZMQFrame );
@@ -958,6 +994,40 @@ begin
     result := result + item[i].dump;
   end;
 end;
+
+function TZMQMsg.saveasHex: Utf8String;
+var
+  i: Integer;
+begin
+  for i := 0 to size - 1 do
+  begin
+    result := result + item[i].asHexString;
+    if i < size - 1 then
+      result := result + #13 + #10;
+  end;
+end;
+
+procedure TZMQMsg.loadfromHex( data: Utf8String );
+var
+  tsl: TStringList;
+  i: Integer;
+  frame: TZMQFrame;
+begin
+  Clear;
+  tsl := TStringList.Create;
+  try
+    tsl.Text := data;
+    for i := 0 to tsl.Count - 1 do
+    begin
+      frame := TZMQFrame.create;
+      frame.asHexString := tsl[i];
+      add( frame );
+    end;
+  finally
+    tsl.Free;
+  end;
+end;
+
 
 { TZMQSocket }
 
@@ -2419,7 +2489,7 @@ begin
 
   for i := 0 to fPollItemCount - 1 do
     fPollItem[i].revents := 0;
-    
+
   result := zmq_poll( fPollItem[0], pc, timeout );
   if result < 0 then
     raise EZMQException.Create
@@ -2444,8 +2514,53 @@ begin
   Byte(result.events) := fPollItem[i].revents;
 end;
 
-// Thread related functions.
+function ZMQPoll( var pia: TZMQPollItemA; piaSize: Integer = -1; timeout: Integer = -1 ): Integer;
+var
+  PollItem: array of zmq.pollitem_t;
+  i,l,n: Integer;
+begin
+  l := Length( pia );
+  if l = 0 then
+    raise EZMQException.Create( 'Nothing to poll!' );
+  SetLength( PollItem, l );
+  try
+    for i := 0 to l - 1 do
+    begin
+      PollItem[i].socket := pia[i].Socket.SocketPtr;
+      PollItem[i].fd := 0;
+      PollItem[i].events := Byte( pia[i].events );
+      PollItem[i].revents := 0;
+    end;
+    if piaSize = -1 then
+      n := l
+    else
+      n := piaSize;
+    result := zmq_poll( PollItem[0], n, timeout );
+    if result < 0 then
+      raise EZMQException.Create;
+    for i := 0 to l - 1 do
+      Byte(pia[i].revents) := PollItem[i].revents;
 
+  finally
+    PollItem := nil;
+  end;
+end;
+
+function ZMQPoll( var pia: TZMQPollItem; piaSize: Integer = 1; timeout: Integer = -1 ): Integer; overload;
+var
+  PollItem: zmq.pollitem_t;
+begin
+  PollItem.socket := pia.Socket.SocketPtr;
+  PollItem.fd := 0;
+  PollItem.events := Byte( pia.events );
+  PollItem.revents := 0;
+  result := zmq_poll( PollItem, piaSize, timeout );
+  if result < 0 then
+    raise EZMQException.Create;
+  Byte(pia.revents) := PollItem.revents;
+end;
+
+// Thread related functions.
 
 procedure ZMQProxy( frontend, backend, capture: TZMQSocket );
 var
@@ -2476,6 +2591,7 @@ procedure InterruptContexts;
 var
   i: Integer;
 begin
+  ZMQTerminated := true;
   for i := 0 to contexts.Count - 1 do
     TZMQContext(contexts[i]).Terminate;
 end;
@@ -2519,6 +2635,7 @@ var
 begin
   if CTRL_C_EVENT = dwCtrlType then
   begin
+    ZMQTerminated := true;
     for i := contexts.Count - 1 downto 0 do
       TZMQContext(contexts[i]).Terminate;
     result := True;

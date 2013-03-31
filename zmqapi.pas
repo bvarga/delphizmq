@@ -102,6 +102,8 @@ type
   TZMQFrame = class
   private
     fMessage: zmq_msg_t;
+    function getAsInteger: Integer;
+    procedure setAsInteger(const Value: Integer);
     function getAsHexString: AnsiString;
     procedure setAsHexString(const Value: AnsiString);
     procedure CheckResult( rc: Integer );
@@ -139,6 +141,7 @@ type
 
     property asUtf8String: Utf8String read getAsUtf8String write setAsUtf8String;
     property asHexString: AnsiString read getAsHexString write setAsHexString;
+    property asInteger: Integer read getAsInteger write setAsInteger;
   end;
 
   // for multipart message
@@ -171,12 +174,14 @@ type
    // Set the cursor to 0
    function pop: TZMQFrame;
    function popstr: Utf8String;
+   function popint: Integer;
    // Add frame to the end of the message, i.e. after all other frames.
    // Message takes ownership of frame, will destroy it when message is sent.
    // Set the cursor to 0
    // Returns 0 on success
    function add( msg: TZMQFrame ): Integer;
    function addstr( msg: Utf8String ): Integer;
+   function addint( msg: Integer ): Integer;
 
    // Push frame plus empty frame to front of message, before first frame.
    // Message takes ownership of frame, will destroy it when message is sent.
@@ -759,6 +764,11 @@ begin
   BinToHex( data, PAnsiChar(result), size );
 end;
 
+function TZMQFrame.getAsInteger: Integer;
+begin
+  result := Integer(data^);
+end;
+
 function TZMQFrame.getAsUtf8String: Utf8String;
 begin
   SetString( result, PAnsiChar(data), size );
@@ -771,6 +781,15 @@ begin
   iSize := Length( Value ) div 2;
   rebuild( iSize );
   HexToBin( PAnsiChar( value ), data, iSize );
+end;
+
+procedure TZMQFrame.setAsInteger( const Value: Integer );
+var
+  iSize: Integer;
+begin
+  iSize := SizeOf( Value );
+  rebuild( iSize );
+  Integer(data^) := Value;
 end;
 
 procedure TZMQFrame.setAsUtf8String( const Value: Utf8String );
@@ -866,6 +885,18 @@ begin
   end;
 end;
 
+function TZMQMsg.popint: Integer;
+var
+  frame: TZMQFrame;
+begin
+  frame := pop;
+  try
+    result := frame.asInteger;
+  finally
+    frame.Free;
+  end;
+end;
+
 function TZMQMsg.add( msg: TZMQFrame ): Integer;
 begin
   try
@@ -884,6 +915,15 @@ var
 begin
   frame := TZMQFrame.create;
   frame.asUtf8String := msg;
+  result := add( frame );
+end;
+
+function TZMQMsg.addint( msg: Integer ): Integer;
+var
+  frame: TZMQFrame;
+begin
+  frame := TZMQFrame.create( sizeOf( Integer ) );
+  frame.asInteger := msg;
   result := add( frame );
 end;
 
@@ -2664,7 +2704,7 @@ begin
   else begin
     fContext := ctx.Shadow;
     fPipe := Context.Socket( stPair );
-    fPipe.bind( Format( 'inproc://zmqthread-pipe-', [fPipe] ) );
+    fPipe.bind( Format( 'inproc://zmqthread-pipe-%p', [@fPipe] ) );
   end;
 end;
 
@@ -2718,10 +2758,10 @@ end;
 
 procedure TZMQThread.Execute;
 begin
-  if Assigned( fAttachedProc ) then
+  if Assigned( fAttachedProc ) or Assigned( fAttachedMeth )  then
   begin // attached thread
     thrPipe := Context.Socket( stPair );
-    thrPipe.connect( Format( 'inproc://zmqthread-pipe-', [fPipe] ) );
+    thrPipe.connect( Format( 'inproc://zmqthread-pipe-%p', [@fPipe] ) );
   end;
 
   DoExecute;

@@ -770,8 +770,11 @@ begin
 end;
 
 function TZMQFrame.getAsUtf8String: Utf8String;
+var
+  t: AnsiString;
 begin
-  SetString( result, PAnsiChar(data), size );
+  SetString( t, PAnsiChar(data), size );
+  result := t;
 end;
 
 procedure TZMQFrame.setAsHexString( const Value: AnsiString );

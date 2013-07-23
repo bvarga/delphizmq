@@ -387,12 +387,13 @@ function zmq_poll( var items: pollitem_t; nitems: Integer; timeout: Longint ): I
 function zmq_proxy( frontend, backend, capture: Pointer ): Integer; cdecl; external libzmq;
 
 {$endif}
-
+{*  Deprecated aliases *}
 const
   ZMQ_STREAMER = 1;
   ZMQ_FORWARDER = 2;
   ZMQ_QUEUE = 3;
-
+  
+{*  Deprecated method *}
 function zmq_device(device: Integer; insocket,outsocket: Pointer): Integer; cdecl; external libzmq;
 
 {*  Helper functions are used by perf tests so that they don't have to care   *}

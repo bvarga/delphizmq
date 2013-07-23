@@ -54,6 +54,8 @@ var
 begin
   for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
   begin
+    if context = nil then
+      context := TZMQContext.Create;
     FZMQSocket := context.Socket( st );
     try
       FZMQSocket.bind('tcp://127.0.0.1:5555');

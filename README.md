@@ -1,19 +1,18 @@
 0MQ Binding for Delphi
 ======================
 
-This is a binding for [ZMQ](http://www.zeromq.org). Should work with Delphi7, BDS2006, XE2 
-and FPC 2.6.0. 
+This is a binding for [ZMQ](http://www.zeromq.org). Should work with all Delphi versions and with FPC 2.6.0. 
 
 General
 =======
 
-The package contains a wrapper (zmq.pas) for the dll, and a higher level api (zmqapi.pas). 
-It should work with ZMQ 2.2.0, and with 3.2.2. To use the v3.2 dll, in
-zmq.inc define zmq3 (($define zmq3}). The dll's come from the 
-[official distro](http://www.zeromq.org/intro:get-the-software) 
+The package contains a wrapper (zmq.pas), and a higher level api (zmqapi.pas). 
+It should work with ZMQ 2.2.x, and with 3.2.x. For version 2.2.x undefine zmq3, in
+zmq.inc. The dll's are not part of this repo, you can download the appropriate from 
+[the official distro](http://www.zeromq.org/intro:get-the-software) 
 
-This is a work in progress, I'm trying to keep it backward compatible, but it's not always
-possible. Please open an issue if you find bugs, or have question, or proposal.
+This is a work in progress, please open an issue if you find bugs, or have question, 
+or proposal.
 
 Usage
 =====

@@ -6,3 +6,4 @@
 __history
 fastmm4
 dunit
+bin\*.dll

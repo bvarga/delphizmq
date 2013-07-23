@@ -32,17 +32,11 @@ uses
 {$endif}
 
 const
-{$ifdef zmq3}
   {$ifdef UNIX}
   libzmq = 'libzmq.so';
   {$else}
-  libzmq = 'libzmq3-x86.dll';
-//  libzmq = 'libzmq3-x86-v100-mt-gd.dll';
-//  libzmq = 'libzmq_3_2_2_xp.dll';
-  {$endif}
-{$else}
   libzmq = 'libzmq.dll';
-{$endif}
+  {$endif}
 
 {  Run-time API version detection                                              }
 procedure zmq_version( var major, minor, patch: Integer ); cdecl; external libzmq;

@@ -1,0 +1,108 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{F49A06B6-7F0C-42F1-91FC-0CFD8A63A7F2}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="tests\tests.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="perf\local_lat.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="perf\remote_lat.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="perf\remote_thr.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="perf\inproc_lat.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="perf\inproc_thr.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="perf\local_thr.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="tests">
+        <MSBuild Projects="tests\tests.dproj"/>
+    </Target>
+    <Target Name="tests:Clean">
+        <MSBuild Projects="tests\tests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="tests:Make">
+        <MSBuild Projects="tests\tests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="local_lat">
+        <MSBuild Projects="perf\local_lat.dproj"/>
+    </Target>
+    <Target Name="local_lat:Clean">
+        <MSBuild Projects="perf\local_lat.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="local_lat:Make">
+        <MSBuild Projects="perf\local_lat.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="remote_lat">
+        <MSBuild Projects="perf\remote_lat.dproj"/>
+    </Target>
+    <Target Name="remote_lat:Clean">
+        <MSBuild Projects="perf\remote_lat.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="remote_lat:Make">
+        <MSBuild Projects="perf\remote_lat.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="remote_thr">
+        <MSBuild Projects="perf\remote_thr.dproj"/>
+    </Target>
+    <Target Name="remote_thr:Clean">
+        <MSBuild Projects="perf\remote_thr.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="remote_thr:Make">
+        <MSBuild Projects="perf\remote_thr.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="inproc_lat">
+        <MSBuild Projects="perf\inproc_lat.dproj"/>
+    </Target>
+    <Target Name="inproc_lat:Clean">
+        <MSBuild Projects="perf\inproc_lat.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="inproc_lat:Make">
+        <MSBuild Projects="perf\inproc_lat.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="inproc_thr">
+        <MSBuild Projects="perf\inproc_thr.dproj"/>
+    </Target>
+    <Target Name="inproc_thr:Clean">
+        <MSBuild Projects="perf\inproc_thr.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="inproc_thr:Make">
+        <MSBuild Projects="perf\inproc_thr.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="local_thr">
+        <MSBuild Projects="perf\local_thr.dproj"/>
+    </Target>
+    <Target Name="local_thr:Clean">
+        <MSBuild Projects="perf\local_thr.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="local_thr:Make">
+        <MSBuild Projects="perf\local_thr.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="tests;local_lat;remote_lat;remote_thr;inproc_lat;inproc_thr;local_thr"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="tests:Clean;local_lat:Clean;remote_lat:Clean;remote_thr:Clean;inproc_lat:Clean;inproc_thr:Clean;local_thr:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="tests:Make;local_lat:Make;remote_lat:Make;remote_thr:Make;inproc_lat:Make;inproc_thr:Make;local_thr:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

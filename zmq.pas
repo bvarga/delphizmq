@@ -102,10 +102,16 @@ const
 
 function zmq_ctx_new: Pointer; cdecl; external libzmq;
 function zmq_ctx_destroy( context: Pointer ): Integer; cdecl; external libzmq;
+
+{$ifdef zmq4}
+function zmq_ctx_term( context: Pointer ): Integer; cdecl; external libzmq;
+function zmq_ctx_shutdown( ctx_: Pointer ): Integer; cdecl; external libzmq;
+{$endif}
 function zmq_ctx_set( context: Pointer; option: Integer; optval: Integer ): Integer; cdecl; external libzmq;
 function zmq_ctx_get( context: Pointer; option: Integer ): Integer; cdecl; external libzmq;
-{$endif}
 
+
+{$endif}
 {*  Old (legacy) API                                                          *}
 function zmq_init(io_threads: Integer): Pointer; cdecl; external libzmq;
 function zmq_term(context: Pointer): Integer; cdecl; external libzmq;
@@ -199,6 +205,8 @@ const
   ZMQ_PUSH = 8;
   ZMQ_XPUB = 9;
   ZMQ_XSUB = 10;
+  ZMQ_STREAM = 11;
+
   ZMQ_XREQ = ZMQ_DEALER;           {*  Old alias, remove in 3.x               *}
   ZMQ_XREP = ZMQ_ROUTER;           {*  Old alias, remove in 3.x               *}
 {$ifndef zmq3}
@@ -242,29 +250,76 @@ const
 {$endif}
   ZMQ_RCVTIMEO = 27;
   ZMQ_SNDTIMEO = 28;
+
 {$ifdef zmq3}
-  ZMQ_IPV4ONLY = 31;
+  ZMQ_IPV4ONLY = 31; // depr in zmq4
   ZMQ_LAST_ENDPOINT = 32;
+{$endif}
+
+{$ifdef zmq3}
   ZMQ_ROUTER_MANDATORY = 33;
+  ZMQ_FAIL_UNROUTABLE = ZMQ_ROUTER_MANDATORY;
+  ZMQ_ROUTER_BEHAVIOR = ZMQ_ROUTER_MANDATORY;
+{$else}
+  ZMQ_FAIL_UNROUTABLE = 33;
+  ZMQ_ROUTER_BEHAVIOR = 33;
+{$endif}
+
+{$ifdef zmq3}
   ZMQ_TCP_KEEPALIVE = 34;
   ZMQ_TCP_KEEPALIVE_CNT = 35;
   ZMQ_TCP_KEEPALIVE_IDLE = 36;
   ZMQ_TCP_KEEPALIVE_INTVL = 37;
   ZMQ_TCP_ACCEPT_FILTER = 38;
+
+
+{$ifdef zmq4}
+  ZMQ_IMMEDIATE = 39;
+  ZMQ_DELAY_ATTACH_ON_CONNECT = ZMQ_IMMEDIATE; // depr in zmq4
+{$else}
   ZMQ_DELAY_ATTACH_ON_CONNECT = 39;
+{$endif}
+
   ZMQ_XPUB_VERBOSE = 40;
+
+{$ifdef zmq4}
+  ZMQ_ROUTER_RAW = 41;
+  ZMQ_IPV6 = 42;
+  ZMQ_MECHANISM = 43;
+  ZMQ_PLAIN_SERVER = 44;
+  ZMQ_PLAIN_USERNAME = 45;
+  ZMQ_PLAIN_PASSWORD = 46;
+  ZMQ_CURVE_SERVER = 47;
+  ZMQ_CURVE_PUBLICKEY = 48;
+  ZMQ_CURVE_SECRETKEY = 49;
+  ZMQ_CURVE_SERVERKEY = 50;
+  ZMQ_PROBE_ROUTER = 51;
+  ZMQ_REQ_CORRELATE = 52;
+  ZMQ_REQ_RELAXED = 53;
+  ZMQ_CONFLATE = 54;
+  ZMQ_ZAP_DOMAIN = 55;
+{$endif}
 
 {*  Message options                                                           *}
   ZMQ_MORE = 1;
+
 {$endif}
 
 {*  Send/recv options.                                                        *}
 {$ifdef zmq3}
   ZMQ_DONTWAIT = 1;
+  ZMQ_NOBLOCK = ZMQ_DONTWAIT;
 {$else}
   ZMQ_NOBLOCK = 1;
 {$endif}
   ZMQ_SNDMORE = 2;
+
+{$ifdef zmq4}
+{*  Security mechanisms                                                       *}
+  ZMQ_NULL = 0;
+  ZMQ_PLAIN = 1;
+  ZMQ_CURVE = 2;
+{$endif}
 
 {$ifdef zmq3}
 {******************************************************************************}
@@ -284,7 +339,10 @@ const
 
   ZMQ_EVENT_CLOSED = 128;
   ZMQ_EVENT_CLOSE_FAILED = 256;
-  ZMQ_EVENT_DISCONNECTED =512;
+  ZMQ_EVENT_DISCONNECTED = 512;
+  {$ifdef zmq4}
+  ZMQ_EVENT_MONITOR_STOPPED = 1024;
+  {$endif}
 
   ZMQ_EVENT_ALL =
     ZMQ_EVENT_CONNECTED or
@@ -296,10 +354,20 @@ const
     ZMQ_EVENT_ACCEPT_FAILED or
     ZMQ_EVENT_CLOSED or
     ZMQ_EVENT_CLOSE_FAILED or
-    ZMQ_EVENT_DISCONNECTED;
+    ZMQ_EVENT_DISCONNECTED
+    {$ifdef zmq4}
+    or ZMQ_EVENT_MONITOR_STOPPED
+    {$endif}
+    ;
 
 {*  Socket event data (union member per event)                                *}
 type
+  {$ifdef zmq4}
+  zmq_event_t = record
+    event: Word;
+    value: Integer;
+  end;
+  {$else}
   zmq_event_t = record
     event: Integer;
     addr: PAnsiChar;
@@ -323,7 +391,7 @@ type
         interval: Integer;
         );
   end;
-
+  {$endif}
 {$endif}
 
 function zmq_socket(context: Pointer; stype: Integer): Pointer; cdecl; external libzmq;
@@ -339,6 +407,11 @@ function zmq_disconnect(s: Pointer; addr: PAnsiChar): Integer; cdecl; external l
 
 {$ifdef zmq3}
 function zmq_send (s: Pointer; const buffer; len: size_t; flags: Integer): Integer; cdecl; external libzmq;
+
+{$ifdef zmq4}
+function zmq_send_const ( s: Pointer; const buffer; len: size_t; flags: Integer ): Integer; cdecl; external libzmq;
+{$endif}
+
 function zmq_recv (s: Pointer; var buffer; len: size_t; flags: Integer): Integer; cdecl; external libzmq;
 {$else}
 function zmq_send (s: Pointer; var msg: zmq_msg_t; flags: Integer): Integer; cdecl; external libzmq;
@@ -376,6 +449,11 @@ type
     revents: Word;
   end;
 
+{$ifdef zmq4}
+const
+  ZMQ_POLLITEMS_DFLT = 16;
+{$endif}
+
 function zmq_poll( var items: pollitem_t; nitems: Integer; timeout: Longint ): Integer; cdecl; external libzmq;
 
 {******************************************************************************}
@@ -385,14 +463,22 @@ function zmq_poll( var items: pollitem_t; nitems: Integer; timeout: Longint ): I
 {$ifdef zmq3}
 {*  Built-in message proxy (3-way) *}
 function zmq_proxy( frontend, backend, capture: Pointer ): Integer; cdecl; external libzmq;
-
 {$endif}
+
+{$ifdef zmq4}
+(*  Encode a binary key as printable text using ZMQ RFC 32                    *)
+function zmq_z85_encode( dest: PAnsiChar; data: PByte; size: size_t): PAnsiChar; cdecl; external libzmq;
+
+{*  Encode a binary key from printable text per ZMQ RFC 32                    *}
+function zmq_z85_decode( dest: PByte; str: PAnsiChar): PByte; cdecl; external libzmq;
+{$endif}
+
 {*  Deprecated aliases *}
 const
   ZMQ_STREAMER = 1;
   ZMQ_FORWARDER = 2;
   ZMQ_QUEUE = 3;
-  
+
 {*  Deprecated method *}
 function zmq_device(device: Integer; insocket,outsocket: Pointer): Integer; cdecl; external libzmq;
 
@@ -408,6 +494,10 @@ function zmq_stopwatch_stop( watch: Pointer ): LongWord; stdcall; external libzm
 
 {*  Sleeps for specified number of seconds.                                   *}
 procedure zmq_sleep( seconds: Integer ); stdcall; external libzmq;
+
+{* Generate z85-encoded public and private keypair with libsodium.            *}
+{* Returns 0 on success.                                                      *}
+function zmq_curve_keypair( z85_public_key: PAnsiChar; z85_secret_key: PAnsiChar ): Integer; cdecl; external libzmq;
 
 implementation
 

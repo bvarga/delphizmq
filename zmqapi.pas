@@ -1826,8 +1826,22 @@ begin
           inc( i );
         end;
         zmqEvent.event := TZMQMonitorEvent( i - 1 );
+        {$ifdef zmq4}
+        zmqEvent.fd := event.value;
+        {$else}
         zmqEvent.addr := event.addr;
         zmqEvent.fd := event.fd;
+        {$endif}
+
+        {$ifdef zmq4}
+        msg.rebuild;
+        msgsize := socket.recv( msg, [] );
+        if msgsize > -1 then
+        begin
+          zmqEvent.addr := msg.asUtf8String;
+        end;
+        {$endif}
+
         ZMQMonitorRec.proc( zmqEvent );
         msg.rebuild;
       end;

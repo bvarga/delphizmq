@@ -24,7 +24,8 @@ uses
   ContextTestCase in '..\src\ContextTestCase.pas',
   PushPullTestCase in '..\src\PushPullTestCase.pas',
   PollTestCase in '..\src\PollTestCase.pas',
-  ThreadTestCase in '..\src\ThreadTestCase.pas';
+  ThreadTestCase in '..\src\ThreadTestCase.pas',
+  ZmqTestCase in '..\src\ZmqTestCase.pas';
 
 {$R *.RES}
 

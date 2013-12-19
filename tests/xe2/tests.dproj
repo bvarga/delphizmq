@@ -112,6 +112,7 @@
 			<DCCReference Include="..\src\PushPullTestCase.pas"/>
 			<DCCReference Include="..\src\PollTestCase.pas"/>
 			<DCCReference Include="..\src\ThreadTestCase.pas"/>
+			<DCCReference Include="..\src\ZmqTestCase.pas"/>
 			<BuildConfiguration Include="zmq3">
 				<Key>Cfg_3</Key>
 				<CfgParent>Base</CfgParent>

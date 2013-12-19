@@ -410,6 +410,8 @@ function zmq_send (s: Pointer; const buffer; len: size_t; flags: Integer): Integ
 
 {$ifdef zmq4}
 function zmq_send_const ( s: Pointer; const buffer; len: size_t; flags: Integer ): Integer; cdecl; external libzmq;
+//function zmq_recviov(): Integer; cdecl; external libzmq;
+//function zmq_sendiov(): Integer; cdecl; external libzmq;
 {$endif}
 
 function zmq_recv (s: Pointer; var buffer; len: size_t; flags: Integer): Integer; cdecl; external libzmq;
@@ -495,10 +497,11 @@ function zmq_stopwatch_stop( watch: Pointer ): LongWord; stdcall; external libzm
 {*  Sleeps for specified number of seconds.                                   *}
 procedure zmq_sleep( seconds: Integer ); stdcall; external libzmq;
 
+{$ifdef zmq4}
 {* Generate z85-encoded public and private keypair with libsodium.            *}
 {* Returns 0 on success.                                                      *}
 function zmq_curve_keypair( z85_public_key: PAnsiChar; z85_secret_key: PAnsiChar ): Integer; cdecl; external libzmq;
-
+{$endif}
 implementation
 
 end.

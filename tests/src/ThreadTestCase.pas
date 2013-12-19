@@ -28,7 +28,7 @@ type
   end;
 
   TThreadTestCase = class( TTestCase )
-  strict private
+  private
     context: TZMQContext;
 
     tvar: Boolean;

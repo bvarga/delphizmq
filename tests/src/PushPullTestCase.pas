@@ -19,7 +19,7 @@ const
 type
 
   TPushPullTestCase = class(TTestCase)
-  strict private
+  private
     context: TZMQContext;
 
   public

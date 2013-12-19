@@ -10,7 +10,7 @@
 	</PersonalityInfo>
 	<Delphi.Personality>
 		<Source>
-			<Source Name="MainSource">tests.zmq4.dpr</Source>
+			<Source Name="MainSource">zmq4.dpr</Source>
 		</Source>
 		<FileVersion>
 			<FileVersion Name="Version">7.0</FileVersion>
@@ -119,11 +119,11 @@
 			<Linker Name="ExeDescription"></Linker>
 		</Linker>
 		<Directories>
-			<Directories Name="OutputDir">..\bin\bds2006\zmq4</Directories>
-			<Directories Name="UnitOutputDir">..\dcu\bds2006\zmq4</Directories>
+			<Directories Name="OutputDir">..\..\bin\win32\zmq4</Directories>
+			<Directories Name="UnitOutputDir">..\..\dcu</Directories>
 			<Directories Name="PackageDLLOutputDir"></Directories>
 			<Directories Name="PackageDCPOutputDir"></Directories>
-			<Directories Name="SearchPath">..\dunit\src;$(BDS)\Source\DUnit\src;..\</Directories>
+			<Directories Name="SearchPath">$(BDS)\Source\DUnit\src;..\..;..\src</Directories>
 			<Directories Name="Packages">vcl;vclx;dbrtl;Rave65VCL;bdertl;rtl;vcldb;adortl;dbxcds;dbexpress;vclib;ibxpress;xmlrtl;vclactnband;inet;IntrawebDB_80_100;Intraweb_80_100;vclie;inetdbbde;inetdbxpress;IndyCore;IndySystem;dclOfficeXP;VclSmp;soaprtl;dsnap;IndyProtocols;teeui;teedb;tee;vcldbx;dsnapcon;websnap;webdsnap;NicePck;GebraPack;DCEF_D7</Directories>
 			<Directories Name="Conditionals">zmq4;fastmm</Directories>
 			<Directories Name="DebugSourceDirs"></Directories>
@@ -171,6 +171,7 @@
 			<VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
 			<VersionInfoKeys Name="Comments"></VersionInfoKeys>
 		</VersionInfoKeys>  
+    
     
     
     <Excluded_Packages>

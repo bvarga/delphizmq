@@ -22,7 +22,7 @@ uses
 type
 
   TContextTestCase = class(TTestCase)
-  strict private
+  private
     context: TZMQContext;
   public
     procedure SetUp; override;

@@ -1,4 +1,4 @@
-program tests.zmq4;
+program zmq3;
 {
 
   Delphi DUnit Test Project
@@ -20,11 +20,11 @@ uses
   TestFramework,
   GUITestRunner,
   TextTestRunner,
-  SocketTestCase in 'SocketTestCase.pas',
-  ContextTestCase in 'ContextTestCase.pas',
-  PushPullTestCase in 'PushPullTestCase.pas',
-  PollTestCase in 'PollTestCase.pas',
-  ThreadTestCase in 'ThreadTestCase.pas';
+  SocketTestCase in '..\src\SocketTestCase.pas',
+  ContextTestCase in '..\src\ContextTestCase.pas',
+  PushPullTestCase in '..\src\PushPullTestCase.pas',
+  PollTestCase in '..\src\PollTestCase.pas',
+  ThreadTestCase in '..\src\ThreadTestCase.pas';
 
 {$R *.RES}
 

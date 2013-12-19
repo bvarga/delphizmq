@@ -22,7 +22,7 @@ uses
 type
 
   TPollTestCase = class(TTestCase)
-  strict private
+  private
     context: TZMQContext;
     poller: TZMQPoller;
     procedure PollEvent( socket: TZMQSocket; events: TZMQPollEvents );

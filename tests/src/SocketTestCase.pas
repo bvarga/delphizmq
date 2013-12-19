@@ -21,7 +21,7 @@ uses
 type
 
   TSocketTestCase = class(TTestCase)
-  strict private
+  private
     context: TZMQContext;
     FZMQSocket: TZMQSocket;
     {$ifdef zmq3}

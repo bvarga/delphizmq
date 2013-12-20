@@ -51,18 +51,29 @@ end;
 
 procedure TZmqTestCase.zmq_curve_keypair;
 var
+  acPublic,
+  acSecret: Array[0..40] of AnsiChar;
   sPublic,
-  sSecret: Array[1..41] of AnsiString;
+  sSecret : String;
+
   rc,errn: Integer;
   errstr: String;
+
 begin
-  rc := zmq.zmq_curve_keypair( @sPublic[1], @sSecret[1] );
+  rc := zmq.zmq_curve_keypair( @acSecret[0], @acPublic[0] );
+  //rc := zmq.zmq_curve_keypair( @sPublic[1], @sSecret[1] );
   if rc = -1 then
   begin
     errn := zmq_errno;
     errstr := String( AnsiString( zmq_strerror( errn ) ) );
     CheckEquals( 0, rc, errstr );
-  end
+  end;
+
+  sPublic := acPublic;
+  sSecret := acSecret;
+
+  CheckEquals( 40, Length( sPublic ), 'wrong length' );
+  CheckEquals( 40, Length( sPublic ), 'wrong length' );
 
 end;
 

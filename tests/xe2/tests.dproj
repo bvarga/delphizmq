@@ -3,7 +3,7 @@
 			<ProjectGuid>{36CA62EC-37AE-4FC0-9DB9-561ED6ED9675}</ProjectGuid>
 			<MainSource>tests.dpr</MainSource>
 			<Base>True</Base>
-			<Config Condition="'$(Config)'==''">zmq4</Config>
+			<Config Condition="'$(Config)'==''">zmq4curve</Config>
 			<TargetedPlatforms>3</TargetedPlatforms>
 			<AppType>Application</AppType>
 			<FrameworkType>VCL</FrameworkType>

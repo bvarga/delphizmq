@@ -47,6 +47,11 @@ type
     procedure TestMonitor;
     procedure TestMonitorConnectDisconnect;
     {$endif}
+
+    {$ifdef zmq4}
+    procedure TestCurveServer;
+    {$endif}
+
     {$else}
     procedure TestSwap;
     procedure TestRecoveryIvlMSec;
@@ -347,6 +352,26 @@ begin
   CloseHandle( ehandle2 );
   Dispose( zmqEvent );
 end;
+{$endif}
+
+{$ifdef zmq4}
+procedure TSocketTestCase.TestCurveServer;
+var
+  st: TZMQSocketType;
+begin
+  for st := Low( TZMQSocketType ) to High( TZMQSocketType ) do
+  begin
+    FZMQSocket := context.Socket( st );
+    try
+      Check( ssNull = FZMQSocket.Security, 'Default check for socket type: ' + IntToStr( Ord( st ) ) );
+      FZMQSocket.Security := ssCurve;
+      Check( ssCurve = FZMQSocket.Security );
+    finally
+      FZMQSocket.Free;
+    end;
+  end;
+end;
+
 {$endif}
 
 {$else}

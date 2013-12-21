@@ -25,7 +25,8 @@ uses
   PushPullTestCase in '..\src\PushPullTestCase.pas',
   PollTestCase in '..\src\PollTestCase.pas',
   ThreadTestCase in '..\src\ThreadTestCase.pas',
-  ZmqTestCase in '..\src\ZmqTestCase.pas';
+  ZmqTestCase in '..\src\ZmqTestCase.pas',
+  CurveTestCase in '..\src\CurveTestCase.pas';
 
 {$R *.RES}
 

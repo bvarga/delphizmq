@@ -131,6 +131,7 @@
 			<DCCReference Include="..\src\PollTestCase.pas"/>
 			<DCCReference Include="..\src\ThreadTestCase.pas"/>
 			<DCCReference Include="..\src\ZmqTestCase.pas"/>
+			<DCCReference Include="..\src\CurveTestCase.pas"/>
 			<BuildConfiguration Include="zmq4curve">
 				<Key>Cfg_2</Key>
 				<CfgParent>Cfg_1</CfgParent>

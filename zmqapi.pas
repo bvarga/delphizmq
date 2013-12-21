@@ -264,6 +264,16 @@ type
     proc: TZMQMonitorProc;
   end;
 
+  {$ifdef zmq4}
+  TSocketSecurity = ( ssNull, ssPlain, ssCurve );
+
+  TCurveKeyType = ( ktBinary, ktZ85 );
+  TCurveKey = record
+  case KeyType: TCurveKeyType of
+    ktBinary: (binary: array[0..31] of PAnsiChar);
+    ktZ85: (z85: array[0..41] of PAnsiString);
+  end;
+  {$endif}
   {$endif}
 
   TZMQSocket = class
@@ -297,8 +307,10 @@ type
     function CheckResult( rc: Integer ): Integer;
     function getSockOptInt64( option: Integer ): Int64;
     function getSockOptInteger( option: Integer ): Integer;
+    function getSockOptCurveKey( option: Integer ): TCurveKey;
     procedure setSockOptInt64( option: Integer; const Value: Int64 );
     procedure setSockOptInteger( option: Integer; const Value: Integer );
+    procedure setSockOptCurveKey( option: Integer; const Value: TCurveKey );
   public
     constructor Create;
     destructor Destroy; override;
@@ -344,6 +356,17 @@ type
     function getAcceptFilter( indx: Integer ): AnsiString;
     procedure setAcceptFilter( indx: Integer; const Value: AnsiString );
     procedure setRouterMandatory( const Value: Boolean );
+    {$ifdef zmq4}
+    function getSecurity: TSocketSecurity;
+    procedure setSecurity( const Value: TSocketSecurity );
+    function getCurvePublicKey: TCurveKey;
+    procedure setCurvePublicKey( const Value: TCurveKey );
+    function getCurveSecretKey: TCurveKey;
+    procedure setCurveSecretKey( const Value: TCurveKey );
+    function getCurveServerKey: TCurveKey;
+    procedure setCurveServerKey( const Value: TCurveKey );
+
+    {$endif}
     {$else}
     function getSwap: Int64;
     function getRecoveryIvlMSec: Int64;
@@ -414,6 +437,16 @@ type
     property AcceptFilter[indx: Integer]: AnsiString read getAcceptFilter write setAcceptFilter;
 
     property RouterMandatory: Boolean write setRouterMandatory;
+    {$ifdef zmq4}
+//    property PlainServer: Boolean read getPlainServer write setPlainServer;
+//    property PlainUserName: Boolean read getPlainUserName write setPlainUserName;
+//    property PlainPassword: Boolean read getPlainPassword write setPlainPassword;
+//    property CurveServer: Boolean read getCurveServer write setCurveServer;
+    property Security: TSocketSecurity read getSecurity write setSecurity;
+    property CurvePublicKey: TCurveKey read getCurvePublicKey write setCurvePublicKey;
+    property CurveSecretKey: TCurveKey read getCurveSecretKey write setCurveSecretKey;
+    property CurveServerKey: TCurveKey read getCurveServerKey write setCurveServerKey;
+    {$endif}
     {$else}
     property Swap: Int64 read getSwap write setSwap;
     property RecoveryIvlMSec: Int64 read getRecoveryIvlMSec write setRecoveryIvlMSec;
@@ -1185,6 +1218,26 @@ begin
   setSockOpt( option, @Value, optvallen );
 end;
 
+function TZMQSocket.getSockOptCurveKey( option: Integer ): TCurveKey;
+var
+  optvallen: size_t;
+begin
+  optvallen := SizeOf( Result.z85 ) - 1; // -1 is for the #0
+  getSockOpt( option, @result, optvallen );
+  result.KeyType := ktZ85;
+end;
+
+procedure TZMQSocket.setSockOptCurveKey( option: Integer; const Value: TCurveKey );
+var
+  optvallen: size_t;
+begin
+  case Value.KeyType of
+    ktBinary: optvallen := SizeOf( Value.binary );
+    ktZ85: optvallen := SizeOf( Value.z85 ) - 1;
+  end;
+  setSockOpt( option, @Value.binary[0], optvallen );
+end;
+
 function TZMQSocket.getSocketType: TZMQSocketType;
 begin
   Result := TZMQSocketType( getSockOptInteger( ZMQ_TYPE ) );
@@ -1472,6 +1525,59 @@ begin
   setSockOptInteger( ZMQ_ROUTER_MANDATORY, i );
 end;
 
+{$ifdef zmq4}
+function TZMQSocket.getSecurity: TSocketSecurity;
+begin
+  result := TSocketSecurity( getSockOptInteger( ZMQ_MECHANISM ) );
+
+  //if getSockOptInteger( ZMQ_CURVE_SERVER ) = 1 then
+  //  result := ssCurve
+  //else if getSockOptInteger( ZMQ_PLAIN_SERVER ) = 1 then
+  //  result := ssPlain
+  //else
+  //  result := ssNull;
+end;
+
+procedure TZMQSocket.setSecurity( const Value: TSocketSecurity );
+begin
+  case Value of
+    ssCurve: setSockOptInteger( ZMQ_CURVE_SERVER, 1 );
+    ssPlain: setSockOptInteger( ZMQ_PLAIN_SERVER, 1 );
+    ssNull: setSockOptInteger( ZMQ_CURVE_SERVER, 0 );
+  end;
+end;
+
+function TZMQSocket.getCurvePublicKey: TCurveKey;
+begin
+  result := getSockOptCurveKey( ZMQ_CURVE_PUBLICKEY );
+end;
+
+procedure TZMQSocket.setCurvePublicKey( const Value: TCurveKey );
+begin
+  setSockOptCurveKey( ZMQ_CURVE_PUBLICKEY, Value );
+end;
+
+function TZMQSocket.getCurveSecretKey: TCurveKey;
+begin
+  result := getSockOptCurveKey( ZMQ_CURVE_SECRETKEY );
+end;
+
+procedure TZMQSocket.setCurveSecretKey( const Value: TCurveKey );
+begin
+  setSockOptCurveKey( ZMQ_CURVE_SECRETKEY, Value );
+end;
+
+function TZMQSocket.getCurveServerKey: TCurveKey;
+begin
+  result := getSockOptCurveKey( ZMQ_CURVE_SERVERKEY );
+end;
+
+procedure TZMQSocket.setCurveServerKey( const Value: TCurveKey );
+begin
+  setSockOptCurveKey( ZMQ_CURVE_SERVERKEY, Value );
+end;
+
+{$endif}
 {$else}
 
 function TZMQSocket.getSwap: Int64;

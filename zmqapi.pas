@@ -304,13 +304,18 @@ type
 
   // helpers
   private
+
     function CheckResult( rc: Integer ): Integer;
     function getSockOptInt64( option: Integer ): Int64;
     function getSockOptInteger( option: Integer ): Integer;
-    function getSockOptCurveKey( option: Integer ): TCurveKey;
+
     procedure setSockOptInt64( option: Integer; const Value: Int64 );
     procedure setSockOptInteger( option: Integer; const Value: Integer );
+
+    {$ifdef zmq4}
+    function getSockOptCurveKey( option: Integer ): TCurveKey;
     procedure setSockOptCurveKey( option: Integer; const Value: TCurveKey );
+    {$endif}
   public
     constructor Create;
     destructor Destroy; override;
@@ -357,6 +362,8 @@ type
     procedure setAcceptFilter( indx: Integer; const Value: AnsiString );
     procedure setRouterMandatory( const Value: Boolean );
     {$ifdef zmq4}
+    function getZAPDomain: Utf8String;
+    procedure setZAPDomain( const Value: Utf8String );
     function getSecurity: TSocketSecurity;
     procedure setSecurity( const Value: TSocketSecurity );
     function getCurvePublicKey: TCurveKey;
@@ -438,6 +445,7 @@ type
 
     property RouterMandatory: Boolean write setRouterMandatory;
     {$ifdef zmq4}
+    property ZAPDomain: Utf8String read getZAPDomain write setZAPDomain;
 //    property PlainServer: Boolean read getPlainServer write setPlainServer;
 //    property PlainUserName: Boolean read getPlainUserName write setPlainUserName;
 //    property PlainPassword: Boolean read getPlainPassword write setPlainPassword;
@@ -638,6 +646,45 @@ type
     property Context: TZMQContext read fContext;
   end;
 
+{$ifdef zmq4}
+  TZMQAgent = class
+  private
+    ctx: TZMQContext;           //  CZMQ context we're working for
+    pipe: TZMQSocket;           //  Pipe back to application API
+    handler: TZMQSocket;        //  ZAP handler socket
+    verbose: Boolean;           //  Trace activity to stdout
+    whitelist: TStringList;     //  Whitelisted addresses
+    blacklist: TStringList;     //  Blacklisted addresses
+    passwords: TStringList;     //  PLAIN passwords, if loaded
+    //zcertstore_t *certstore;    //  CURVE certificate store, if loaded
+    allow_any: Boolean;         //  CURVE allows arbitrary clients
+    terminated: Boolean;        //  Did API ask us to quit?
+
+    function handlePipe: Integer;
+    function authenticate: Integer;
+  public
+    constructor Create( lctx: TZMQContext; lpipe: TZMQSocket );
+    destructor Destroy; override;
+
+    procedure Task;
+  end;
+
+  TZMQAuth = class
+  private
+    thr: TZMQThread;
+    fVerbose: Boolean;
+    procedure Task( args: Pointer; Context: TZMQContext; Pipe: TZMQSocket );
+    procedure setVerbose(const Value: Boolean);
+  public
+    constructor Create( ctx: TZMQContext );
+    destructor destroy; override;
+
+    procedure allow( address: Utf8String );
+    procedure deny( address: Utf8String );
+
+    property verbose: Boolean read fVerbose write setVerbose;
+  end;
+{$endif}
 
 implementation
 
@@ -1218,6 +1265,7 @@ begin
   setSockOpt( option, @Value, optvallen );
 end;
 
+{$ifdef zmq4}
 function TZMQSocket.getSockOptCurveKey( option: Integer ): TCurveKey;
 var
   optvallen: size_t;
@@ -1237,6 +1285,7 @@ begin
   end;
   setSockOpt( option, @Value.binary[0], optvallen );
 end;
+{$endif}
 
 function TZMQSocket.getSocketType: TZMQSocketType;
 begin
@@ -1526,6 +1575,16 @@ begin
 end;
 
 {$ifdef zmq4}
+function TZMQSocket.getZAPDomain: Utf8String;
+begin
+  raise EZMQException.Create('todo get zap domain');
+end;
+
+procedure TZMQSocket.setZAPDomain( const Value: Utf8String );
+begin
+  setSockOpt( ZMQ_ZAP_DOMAIN, @Value[1], Length( Value ) );
+end;
+
 function TZMQSocket.getSecurity: TSocketSecurity;
 begin
   result := TSocketSecurity( getSockOptInteger( ZMQ_MECHANISM ) );
@@ -2889,6 +2948,256 @@ begin
 
   DoExecute;
 end;
+
+{$ifdef zmq4}
+constructor TZMQAgent.Create( lctx: TZMQContext; lpipe: TZMQSocket );
+begin
+  ctx := lctx;
+  pipe := lpipe;
+  whitelist := TStringList.Create;
+  whitelist.Duplicates := dupIgnore;
+  blacklist := TStringList.Create;
+  passwords := TStringList.Create;
+  try
+    //  Create ZAP handler and get ready for requests
+    handler := ctx.Socket( stRep );
+    handler.bind( 'inproc://zeromq.zap.01' );
+    pipe.send('OK');
+  except
+    pipe.send('ERROR');
+  end;
+end;
+
+destructor TZMQAgent.Destroy;
+begin
+  whitelist.Free;
+  blacklist.Free;
+  passwords.Free;
+  handler.Free;
+  inherited;
+end;
+
+//  Handle a message from front-end API
+procedure TZMQAgent.Task;
+var
+  pia: TZMQPollItemA;
+  res: Integer;
+begin
+  SetLength( pia, 2 );
+  pia[0].socket := self.pipe;
+  pia[0].events := [pePollIn];
+  pia[1].socket := self.handler;
+  pia[1].events := [pePollIn];
+  while not ctx.Terminated and not terminated do
+  begin
+    ZMQPoll( pia );
+    if pePollIn in pia[0].revents then
+    begin
+      handlePipe;
+    end else if pePollIn in pia[1].revents then
+    begin
+      authenticate;
+    end;
+
+  end;
+  //  Done, free all agent resources
+  SetLength( pia, 0 );
+end;
+
+//  Handle a message from front-end API
+function TZMQAgent.handlePipe: Integer;
+var
+  request: TZMQMsg;
+  command,
+  address,
+  domain,
+  filename,
+  location,
+  lverbose: Utf8String;
+begin
+  //  Get the whole message off the pipe in one go
+  request := nil;
+  pipe.recv( request );
+
+  command := request.popstr;
+  if (command = '') then
+    result := -1                  //  Interrupted
+  else if ( command = 'ALLOW' ) then
+  begin
+    address := request.popstr;
+    whitelist.Add( address );
+    pipe.send('OK');
+  end else if (command = 'DENY') then
+  begin
+    address := request.popstr;
+    blacklist.Add( address );
+    pipe.send('OK');
+  end else if (command = 'PLAIN') then
+  begin
+    //  For now we don't do anything with domains
+    domain := request.popstr;
+    //  Get password file and load into zhash table
+    //  If the file doesn't exist we'll get an empty table
+    filename := request.popstr;
+    passwords.LoadFromFile( filename );
+    pipe.send('OK');
+  end else if (command = 'CURVE') then
+  begin
+    raise EZMQException.Create( 'todo command CURVE' );
+    {
+    //  For now we don't do anything with domains
+    domain := request.popstr;
+    //  If location is CURVE_ALLOW_ANY, allow all clients. Otherwise
+    //  treat location as a directory that holds the certificates.
+    location = request.popstr;
+    if location = CURVE_ALLOW_ANY then
+        allow_any := true;
+    else begin
+      //zcertstore_destroy (&self->certstore);
+      //self->certstore = zcertstore_new (location);
+      allow_any := false;
+    end;
+    pipe.send('OK');
+    }
+  end else if (command = 'VERBOSE') then
+  begin
+    lverbose := request.popstr;
+    verbose := lverbose = '1';
+    pipe.send('OK');
+  end else if (command = 'TERMINATE') then
+  begin
+    terminated := true;
+    pipe.send('OK');
+  end else
+    EZMQException.Create( Format('E: invalid command from API: %s', [command]));
+  request.Free;
+  result := 0;
+end;
+
+function TZMQAgent.authenticate: Integer;
+begin
+  raise EZMQException.Create('todo agent authenticate');
+  (*
+  zap_request_t *request = zap_request_new (self->handler);
+  if (request) {
+      //  Is address explicitly whitelisted or blacklisted?
+      bool allowed = false;
+      bool denied = false;
+
+      if (zhash_size (self->whitelist)) {
+          if (zhash_lookup (self->whitelist, request->address)) {
+              allowed = true;
+              if (self->verbose)
+                  printf ("I: PASSED (whitelist) address=%s\n", request->address);
+          }
+          else {
+              denied = true;
+              if (self->verbose)
+                  printf ("I: DENIED (not in whitelist) address=%s\n", request->address);
+          }
+      }
+      else
+      if (zhash_size (self->blacklist)) {
+          if (zhash_lookup (self->blacklist, request->address)) {
+              denied = true;
+              if (self->verbose)
+                  printf ("I: DENIED (blacklist) address=%s\n", request->address);
+          }
+          else {
+              allowed = true;
+              if (self->verbose)
+                  printf ("I: PASSED (not in blacklist) address=%s\n", request->address);
+          }
+      }
+      //  Mechanism-specific checks
+      if (!denied) {
+          if (streq (request->mechanism, "NULL") && !allowed) {
+              //  For NULL, we allow if the address wasn't blacklisted
+              if (self->verbose)
+                  printf ("I: ALLOWED (NULL)\n");
+              allowed = true;
+          }
+          else
+          if (streq (request->mechanism, "PLAIN"))
+              //  For PLAIN, even a whitelisted address must authenticate
+              allowed = s_authenticate_plain (self, request);
+          else
+          if (streq (request->mechanism, "CURVE"))
+              //  For CURVE, even a whitelisted address must authenticate
+              allowed = s_authenticate_curve (self, request);
+      }
+      if (allowed)
+          zap_request_reply (request, "200", "OK");
+      else
+          zap_request_reply (request, "400", "NO ACCESS");
+
+      zap_request_destroy (&request);
+  }
+  else
+      zap_request_reply (request, "500", "Internal error");
+  return 0;
+  *)
+end;
+
+{ TZMQAuth }
+
+constructor TZMQAuth.Create( ctx: TZMQContext );
+var
+  s: Utf8String;
+begin
+  thr := TZMQThread.CreateAttached( Task, ctx, nil );
+  thr.Resume;
+  thr.Pipe.recv( s );
+end;
+
+destructor TZMQAuth.Destroy;
+begin
+  thr.Free;
+  inherited;
+end;
+
+procedure TZMQAuth.Task( args: Pointer; Context: TZMQContext; Pipe: TZMQSocket );
+var
+  agent: TZMQAgent;
+begin
+  //  Create agent instance as we start this task
+  agent := TZMQAgent.Create( Context, pipe );
+  try
+    agent.Task;
+  finally
+    agent.Free;
+  end;
+end;
+
+procedure TZMQAuth.setVerbose(const Value: Boolean);
+var
+  response: Utf8String;
+begin
+  thr.Pipe.send(['VERBOSE', BoolToStr(Value)]);
+  // zstr_send  (self->pipe, "%d", verbose); ???????????
+  //  Wait for completion
+  thr.Pipe.recv( response );
+  fVerbose := Value;
+end;
+
+procedure TZMQAuth.allow(address: Utf8String);
+var
+  response: Utf8String;
+begin
+  thr.Pipe.send(['ALLOW', address]);
+  //  Wait for completion
+  thr.Pipe.recv( response );
+end;
+
+procedure TZMQAuth.deny(address: Utf8String);
+var
+  response: Utf8String;
+begin
+  thr.Pipe.send(['DENY', address]);
+  //  Wait for completion
+  thr.Pipe.recv( response );
+end;
+{$endif}
 
 initialization
   {$ifdef UNIX}

@@ -647,6 +647,28 @@ type
   end;
 
 {$ifdef zmq4}
+
+  //  Structure of a ZAP request
+  TZAPRequest = class
+  public
+    handler: TZMQSocket;          //  Socket we're talking to
+    version: String;              //  Version number, must be "1.0"
+    sequence: String;             //  Sequence number of request
+    domain: String;               //  Server socket domain
+    address: String;              //  Client IP address
+    identity: String;             //  Server socket idenntity
+    mechanism: String;            //  Security mechansim
+    username: String;             //  PLAIN user name
+    password: String;             //  PLAIN password, in clear text
+    client_key: String;           //  CURVE client public key in ASCII
+    constructor Create( lHandler: TZMQSocket );
+    destructor Destroy; override;
+
+    function Reply( status_code, status_text: String ): Integer;
+    procedure dump;
+
+  end;
+
   TZMQAgent = class
   private
     ctx: TZMQContext;           //  CZMQ context we're working for
@@ -662,6 +684,8 @@ type
 
     function handlePipe: Integer;
     function authenticate: Integer;
+    function authenticatePlain( request: TZAPRequest ): Boolean;
+    function authenticateCurve( request: TZAPRequest ): Boolean;
   public
     constructor Create( lctx: TZMQContext; lpipe: TZMQSocket );
     destructor Destroy; override;
@@ -2950,6 +2974,64 @@ begin
 end;
 
 {$ifdef zmq4}
+
+constructor TZAPRequest.Create( lHandler: TZMQSocket );
+var
+  request: TZMQMsg;
+begin
+
+  //  Store handler socket so we can send a reply easily
+  handler := lHandler;
+  request := nil;
+  handler.recv( request );
+
+  //  Get all standard frames off the handler socket
+  version := request.popstr;
+  sequence := request.popstr;
+  domain := request.popstr;
+  address := request.popstr;
+  identity := request.popstr;
+  mechanism := request.popstr;
+
+  //  If the version is wrong, we're linked with a bogus libzmq, so die
+  if version <> '1.0' then
+    raise EZMQException.Create('version not 1.0');
+
+  //  Get mechanism-specific frames
+  if mechanism = 'PLAIN' then
+  begin
+    username := request.popstr;
+    password := request.popstr;
+  end else if mechanism = 'CURVE' then
+  begin
+    raise EZMQException.Create('todo ZAPRequest CURVE msg');
+    {
+    zframe_t *frame = zmsg_pop (request);
+    assert (zframe_size (frame) == 32);
+    self->client_key = (char *) zmalloc (41);
+    zmq_z85_encode ( self->client_key, zframe_data (frame), 32);
+    zframe_destroy (&frame);
+    }
+  end;
+  request.Free;
+end;
+
+destructor TZAPRequest.Destroy;
+begin
+  inherited;
+end;
+
+function TZAPRequest.Reply( status_code, status_text: String ): Integer;
+begin
+  handler.send(['1.0', sequence, status_code, status_text,'','']);
+end;
+
+procedure TZAPRequest.dump;
+begin
+  writeln( Format( 'Mechanism=%s domain=%s address=%s',[
+    mechanism, domain, address]));
+end;
+
 constructor TZMQAgent.Create( lctx: TZMQContext; lpipe: TZMQSocket );
 begin
   ctx := lctx;
@@ -3075,70 +3157,88 @@ begin
 end;
 
 function TZMQAgent.authenticate: Integer;
+var
+  request: TZAPRequest;
+  allowed,
+  denied: Boolean;
 begin
-  raise EZMQException.Create('todo agent authenticate');
-  (*
-  zap_request_t *request = zap_request_new (self->handler);
-  if (request) {
-      //  Is address explicitly whitelisted or blacklisted?
-      bool allowed = false;
-      bool denied = false;
+  request := TZAPRequest.Create( handler );
+  if (request <> nil) then
+  begin
+    //  Is address explicitly whitelisted or blacklisted?
+    allowed := false;
+    denied := false;
 
-      if (zhash_size (self->whitelist)) {
-          if (zhash_lookup (self->whitelist, request->address)) {
-              allowed = true;
-              if (self->verbose)
-                  printf ("I: PASSED (whitelist) address=%s\n", request->address);
-          }
-          else {
-              denied = true;
-              if (self->verbose)
-                  printf ("I: DENIED (not in whitelist) address=%s\n", request->address);
-          }
-      }
-      else
-      if (zhash_size (self->blacklist)) {
-          if (zhash_lookup (self->blacklist, request->address)) {
-              denied = true;
-              if (self->verbose)
-                  printf ("I: DENIED (blacklist) address=%s\n", request->address);
-          }
-          else {
-              allowed = true;
-              if (self->verbose)
-                  printf ("I: PASSED (not in blacklist) address=%s\n", request->address);
-          }
-      }
-      //  Mechanism-specific checks
-      if (!denied) {
-          if (streq (request->mechanism, "NULL") && !allowed) {
-              //  For NULL, we allow if the address wasn't blacklisted
-              if (self->verbose)
-                  printf ("I: ALLOWED (NULL)\n");
-              allowed = true;
-          }
-          else
-          if (streq (request->mechanism, "PLAIN"))
-              //  For PLAIN, even a whitelisted address must authenticate
-              allowed = s_authenticate_plain (self, request);
-          else
-          if (streq (request->mechanism, "CURVE"))
-              //  For CURVE, even a whitelisted address must authenticate
-              allowed = s_authenticate_curve (self, request);
-      }
-      if (allowed)
-          zap_request_reply (request, "200", "OK");
-      else
-          zap_request_reply (request, "400", "NO ACCESS");
+    if whitelist.Count > 0 then
+    begin
+      if whitelist.IndexOf( request.address) > -1 then
+      begin
+        allowed := true;
+        if verbose then
+          Writeln(Format('I: PASSED (whitelist) address=%s', [request.address]));
+      end else begin
+        denied := true;
+        if verbose then
+          Writeln(Format('I: DENIED (not in whitelist) address=%s', [request.address]));
+      end;
+    end
+    else
+    if blacklist.count > 0 then
+    begin
+      if blacklist.IndexOf( request.address ) > -1 then
+      begin
+        denied := true;
+        if verbose then
+          Writeln(Format('I: DENIED (blacklist) address=%s', [request.address]));
+      end else begin
+        allowed := true;
+        if verbose then
+          Writeln(Format('I: PASSED (not in blacklist) address=%s', [request.address]));
+      end;
+    end;
 
-      zap_request_destroy (&request);
-  }
-  else
-      zap_request_reply (request, "500", "Internal error");
-  return 0;
-  *)
+    //  Mechanism-specific checks
+    if not denied then
+    begin
+      if (request.mechanism = 'NULL') and not allowed then
+      begin
+        //  For NULL, we allow if the address wasn't blacklisted
+        if verbose then
+            Writeln('I: ALLOWED (NULL)');
+        allowed := true;
+      end
+      else
+      if request.mechanism = 'PLAIN' then
+        //  For PLAIN, even a whitelisted address must authenticate
+        allowed := authenticatePlain(request)
+      else
+      if request.mechanism = 'CURVE' then
+        //  For CURVE, even a whitelisted address must authenticate
+        allowed := authenticateCurve(request);
+    end;
+    if allowed then
+      request.reply('200', 'OK')
+    else
+      request.reply('400', 'NO ACCESS');
+
+    request.Free;
+  end else
+  begin
+    // zap_request_reply (request, "500", "Internal error");
+  end;
+  result := 0;
+
 end;
 
+function TZMQAgent.authenticatePlain( request: TZAPRequest ): Boolean;
+begin
+  raise EZMQException.Create('todo agent authenticatePlain');
+end;
+
+function TZMQAgent.authenticateCurve( request: TZAPRequest ): Boolean;
+begin
+  raise EZMQException.Create('todo agent authenticateCurve');
+end;
 { TZMQAuth }
 
 constructor TZMQAuth.Create( ctx: TZMQContext );
@@ -3151,8 +3251,13 @@ begin
 end;
 
 destructor TZMQAuth.Destroy;
+var
+  response: Utf8String;
 begin
-  thr.Free;
+  thr.FreeOnTerminate := true;
+  thr.Pipe.send('TERMINATE');
+  //  Wait for completion
+  thr.Pipe.recv( response );
   inherited;
 end;
 

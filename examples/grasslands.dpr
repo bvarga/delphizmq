@@ -24,7 +24,7 @@ begin
 
   //  Create and bind server socket
   server := Context.Socket( stPush );
-  server.bind('tcp://127.0.0.1:9000');
+  server.bind('tcp://*:9000');
 
   //  Create and connect client socket
   client := Context.Socket( stPull );

@@ -1,14 +1,11 @@
-program strawhouse;
-//  The Strawhouse Pattern
+program woodhouse;
+//  The Woodhouse Pattern
 //
-//  We allow or deny clients according to their IP address. It may keep
-//  spammers and idiots away, but won't stop a real attacker for more
-//  than a heartbeat.
+//  It may keep some malicious people out but all it takes is a bit
+//  of network sniffing, and they'll be able to fake their way in.
 //  @author Varga Balázs <bb.varga@gmail.com>
 
 {$APPTYPE CONSOLE}
-
-{$R *.res}
 
 uses
     System.SysUtils
@@ -22,27 +19,25 @@ var
   client: TZMQSocket;
   msg: Utf8String;
 begin
-  //  Create context
+  //  Create context and start authentication engine
   context := TZMQContext.Create;
-
-  //  Start an authentication engine for this context. This engine
-  //  allows or denies incoming connections (talking to the libzmq
-  //  core over a protocol called ZAP).
   auth :=  TZMQauth.Create( context );
-
-  //  Get some indication of what the authenticator is deciding
   auth.verbose := true;
-
-  //  Whitelist our address; any other address will be rejected
   auth.allow( '127.0.0.1' );
+
+  //  Tell the authenticator how to handle PLAIN requests
+  auth.configurePlain('*','passwords');
 
   //  Create and bind server socket
   server := Context.Socket( stPush );
-  server.ZAPDomain := 'global';
+  server.Security := ssPlain;
+  //zsocket_set_plain_server (server, 1);
   server.bind('tcp://*:9000');
 
   //  Create and connect client socket
   client := Context.Socket( stPull );
+  client.PlainUserName := 'admin';
+  client.PlainPassword := 'secret';
   client.connect('tcp://127.0.0.1:9000');
 
   //  Send a single message from server to client
@@ -50,10 +45,11 @@ begin
   client.recv( msg );
 
   Assert( msg = 'Hello' );
-  Writeln( 'Strawhouse test OK' );
+  Writeln( 'Woodhouse test OK' );
 
   auth.Free;
   context.Free;
 end.
+
 
 

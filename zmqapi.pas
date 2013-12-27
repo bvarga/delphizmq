@@ -364,6 +364,10 @@ type
     {$ifdef zmq4}
     function getZAPDomain: Utf8String;
     procedure setZAPDomain( const Value: Utf8String );
+    function getPlainUserName: Utf8String;
+    procedure setPlainUserName( const Value: Utf8String );
+    function getPlainPassword: Utf8String;
+    procedure setPlainPassword( const Value: Utf8String );
     function getSecurity: TSocketSecurity;
     procedure setSecurity( const Value: TSocketSecurity );
     function getCurvePublicKey: TCurveKey;
@@ -447,8 +451,8 @@ type
     {$ifdef zmq4}
     property ZAPDomain: Utf8String read getZAPDomain write setZAPDomain;
 //    property PlainServer: Boolean read getPlainServer write setPlainServer;
-//    property PlainUserName: Boolean read getPlainUserName write setPlainUserName;
-//    property PlainPassword: Boolean read getPlainPassword write setPlainPassword;
+    property PlainUserName: Utf8String read getPlainUserName write setPlainUserName;
+    property PlainPassword: Utf8String read getPlainPassword write setPlainPassword;
 //    property CurveServer: Boolean read getCurveServer write setCurveServer;
     property Security: TSocketSecurity read getSecurity write setSecurity;
     property CurvePublicKey: TCurveKey read getCurvePublicKey write setCurvePublicKey;
@@ -705,6 +709,8 @@ type
 
     procedure allow( address: Utf8String );
     procedure deny( address: Utf8String );
+
+    procedure ConfigurePlain( domain, filename: Utf8String );
 
     property verbose: Boolean read fVerbose write setVerbose;
   end;
@@ -1607,6 +1613,26 @@ end;
 procedure TZMQSocket.setZAPDomain( const Value: Utf8String );
 begin
   setSockOpt( ZMQ_ZAP_DOMAIN, @Value[1], Length( Value ) );
+end;
+
+function TZMQSocket.getPlainUserName: Utf8String;
+begin
+  raise EZMQException.Create('todo get plain username');
+end;
+
+procedure TZMQSocket.setPlainUserName( const Value: Utf8String );
+begin
+  setSockOpt( ZMQ_PLAIN_USERNAME, @Value[1], Length( Value ) );
+end;
+
+function TZMQSocket.getPlainPassword: Utf8String;
+begin
+  raise EZMQException.Create('todo get plain password');
+end;
+
+procedure TZMQSocket.setPlainPassword( const Value: Utf8String );
+begin
+  setSockOpt( ZMQ_PLAIN_PASSWORD, @Value[1], Length( Value ) );
 end;
 
 function TZMQSocket.getSecurity: TSocketSecurity;
@@ -3039,7 +3065,7 @@ begin
   whitelist := TStringList.Create;
   whitelist.Duplicates := dupIgnore;
   blacklist := TStringList.Create;
-  passwords := TStringList.Create;
+  passwords := nil;
   try
     //  Create ZAP handler and get ready for requests
     handler := ctx.Socket( stRep );
@@ -3054,7 +3080,8 @@ destructor TZMQAgent.Destroy;
 begin
   whitelist.Free;
   blacklist.Free;
-  passwords.Free;
+  if passwords <> nil then
+    passwords.Free;
   handler.Free;
   inherited;
 end;
@@ -3121,7 +3148,15 @@ begin
     //  Get password file and load into zhash table
     //  If the file doesn't exist we'll get an empty table
     filename := request.popstr;
-    passwords.LoadFromFile( filename );
+    passwords := TStringList.Create;
+    try
+      passwords.LoadFromFile( filename );
+    except
+      if verbose then
+        Writeln('Error opening password file! ' + filename );
+      passwords.Free;
+      passwords := nil;
+    end;
     pipe.send('OK');
   end else if (command = 'CURVE') then
   begin
@@ -3144,7 +3179,7 @@ begin
   end else if (command = 'VERBOSE') then
   begin
     lverbose := request.popstr;
-    verbose := lverbose = '1';
+    verbose := lverbose <> '0';
     pipe.send('OK');
   end else if (command = 'TERMINATE') then
   begin
@@ -3231,8 +3266,27 @@ begin
 end;
 
 function TZMQAgent.authenticatePlain( request: TZAPRequest ): Boolean;
+var
+  password: String;
 begin
-  raise EZMQException.Create('todo agent authenticatePlain');
+  if passwords <> nil then
+  begin
+    password := passwords.Values[request.username];
+    if (password <> '') and (password = request.password) then
+    begin
+      if verbose then
+        Writeln(Format('I: ALLOWED (PLAIN) username=%s password=%s',[request.username, request.password]));
+      result := true;
+    end else begin
+      if verbose then
+        Writeln(Format('I: DENIED (PLAIN) username=%s password=%s',[request.username, request.password]));
+      result := false;
+    end;
+  end else begin
+    if verbose then
+      Writeln('I: DENIED (PLAIN) no password file defined');
+    result := false;
+  end;
 end;
 
 function TZMQAgent.authenticateCurve( request: TZAPRequest ): Boolean;
@@ -3302,6 +3356,18 @@ begin
   //  Wait for completion
   thr.Pipe.recv( response );
 end;
+
+procedure TZMQAuth.ConfigurePlain( domain, filename: Utf8String );
+var
+  response: Utf8String;
+begin
+  if domain = '' then
+    raise EZMQException.Create('empty domain');
+  thr.pipe.send(['PLAIN',domain,filename]);
+  //  Wait for completion
+  thr.Pipe.recv(response);
+end;
+
 {$endif}
 
 initialization

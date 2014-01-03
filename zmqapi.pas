@@ -267,12 +267,31 @@ type
   {$ifdef zmq4}
   TSocketSecurity = ( ssNull, ssPlain, ssCurve );
 
-  TCurveKeyType = ( ktBinary, ktZ85 );
-  TCurveKey = record
-  case KeyType: TCurveKeyType of
-    ktBinary: (binary: array[0..31] of PAnsiChar);
-    ktZ85: (z85: array[0..41] of PAnsiString);
+  TCurveKeyBin = array[0..31] of Byte;
+  TCurveKeyTxt = array[0..40] of AnsiChar;
+
+  TCurveKey = class
+  private
+    fBin: TCurveKeyBin;
+    fTxt: TCurveKeyTxt;
+
+    function getPtrBin: PByte;
+    function getPtrTxt: PAnsiChar;
+    procedure setBin( const Value: TCurveKeyBin );
+    procedure setTxt( const Value: TCurveKeyTxt );
+    function getText: Utf8String;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    //procedure Clear;
+
+    property ptrBin: PByte read getPtrBin;
+    property ptrTxt: PAnsiChar read getPtrTxt;
+    property bin: TCurveKeyBin read fBin write setBin;
+    property txt: TCurveKeyTxt read fTxt write setTxt;
+    property Text: Utf8String read getText;
   end;
+
   {$endif}
   {$endif}
 
@@ -651,6 +670,26 @@ type
   end;
 
 {$ifdef zmq4}
+  TZMQCert = class
+  private
+    fPublicKey: TCurveKey;
+    fSecretKey: TCurveKey;
+
+    procedure CheckResult( rc: Integer );
+
+  public
+    metadata: TStringList;          //  Certificate metadata
+    //zconfig_t *config;          //  Config tree to save
+
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure random;
+    procedure Apply( socket: TZMQSocket );
+
+    property publicKey: TCurveKey read fPublicKey;
+    property secretKey: TCurveKey read fSecretKey;
+  end;
 
   //  Structure of a ZAP request
   TZAPRequest = class
@@ -711,9 +750,14 @@ type
     procedure deny( address: Utf8String );
 
     procedure ConfigurePlain( domain, filename: Utf8String );
+    procedure ConfigureCurve( domain, location: Utf8String );
 
     property verbose: Boolean read fVerbose write setVerbose;
   end;
+
+const
+  ZMQ_CURVE_ALLOW_ANY = '*';
+
 {$endif}
 
 implementation
@@ -1181,7 +1225,49 @@ begin
   end;
 end;
 
+{$ifdef zmq4}
+constructor TCurveKey.Create;
+begin
 
+end;
+
+destructor TCurveKey.Destroy;
+begin
+  inherited;
+end;
+
+procedure Clear;
+begin
+
+end;
+
+function TCurveKey.getPtrBin: PByte;
+begin
+  result := @fBin[0];
+end;
+
+function TCurveKey.getPtrTxt: PAnsiChar;
+begin
+  result := @fTxt[0];
+end;
+
+procedure TCurveKey.setBin( const Value: TCurveKeyBin );
+begin
+  Move( Value[0], fBin[0], Length(Value) );
+  zmq_z85_encode( @fTxt[0], @fBin[0], 31 );
+end;
+
+procedure TCurveKey.setTxt( const Value: TCurveKeyTxt );
+begin
+  Move( Value[0], fTxt[0], Length(Value) );
+  zmq_z85_decode( @fBin[0], @fTxt[0] );
+end;
+
+function TCurveKey.getText;
+begin
+end;
+
+{$endif}
 { TZMQSocket }
 
 constructor TZMQSocket.Create;
@@ -1299,21 +1385,20 @@ end;
 function TZMQSocket.getSockOptCurveKey( option: Integer ): TCurveKey;
 var
   optvallen: size_t;
+  ck: TCurveKeyTxt;
 begin
-  optvallen := SizeOf( Result.z85 ) - 1; // -1 is for the #0
-  getSockOpt( option, @result, optvallen );
-  result.KeyType := ktZ85;
+  result := TCurveKey.Create;
+  optvallen := SizeOf( TCurveKeyTxt ) - 1; // -1 is for the #0
+  getSockOpt( option, @ck[0], optvallen );
+  result.txt := ck;
 end;
 
 procedure TZMQSocket.setSockOptCurveKey( option: Integer; const Value: TCurveKey );
 var
   optvallen: size_t;
 begin
-  case Value.KeyType of
-    ktBinary: optvallen := SizeOf( Value.binary );
-    ktZ85: optvallen := SizeOf( Value.z85 ) - 1;
-  end;
-  setSockOpt( option, @Value.binary[0], optvallen );
+  optvallen := SizeOf( TCurveKeyTxt ) - 1;
+  setSockOpt( option, @Value.Txt[0], optvallen );
 end;
 {$endif}
 
@@ -3001,6 +3086,53 @@ end;
 
 {$ifdef zmq4}
 
+constructor TZMQCert.Create;
+begin
+  fPublicKey := TCurveKey.Create;
+  fSecretKey := TCurveKey.Create;
+  metadata := TStringList.Create;
+  //zconfig_t *config;          //  Config tree to save
+end;
+
+destructor TZMQCert.Destroy;
+begin
+  fPublicKey.Free;
+  fSecretKey.Free;
+  metadata.Free;
+  inherited;
+end;
+
+procedure TZMQCert.CheckResult( rc: Integer );
+begin
+  if rc = 0 then
+  begin
+  // ok
+  end else
+  if rc = -1 then
+  begin
+    raise EZMQException.Create( zmq_errno );
+  end else
+    raise EZMQException.Create('Function result is not 0, or -1!');
+end;
+
+procedure TZMQCert.Random;
+var
+  acPublic,
+  acSecret: TCurveKeyTxt;
+begin
+  CheckResult( zmq.zmq_curve_keypair( @acSecret[0], @acPublic[0] ) );
+  fPublicKey.txt := acPublic;
+  fSecretKey.txt := acSecret;
+end;
+
+procedure TZMQCert.Apply( socket: TZMQSocket );
+begin
+  socket.CurvePublicKey := publicKey;
+  socket.CurveSecretKey := secretKey;
+end;
+
+{ TZAPRequest }
+
 constructor TZAPRequest.Create( lHandler: TZMQSocket );
 var
   request: TZMQMsg;
@@ -3160,22 +3292,23 @@ begin
     pipe.send('OK');
   end else if (command = 'CURVE') then
   begin
-    raise EZMQException.Create( 'todo command CURVE' );
-    {
+
+
     //  For now we don't do anything with domains
     domain := request.popstr;
     //  If location is CURVE_ALLOW_ANY, allow all clients. Otherwise
     //  treat location as a directory that holds the certificates.
-    location = request.popstr;
-    if location = CURVE_ALLOW_ANY then
-        allow_any := true;
+    location := request.popstr;
+    if location = ZMQ_CURVE_ALLOW_ANY then
+        allow_any := true
     else begin
+      raise EZMQException.Create( 'todo command CURVE ' );
       //zcertstore_destroy (&self->certstore);
       //self->certstore = zcertstore_new (location);
       allow_any := false;
     end;
     pipe.send('OK');
-    }
+
   end else if (command = 'VERBOSE') then
   begin
     lverbose := request.popstr;
@@ -3364,6 +3497,17 @@ begin
   if domain = '' then
     raise EZMQException.Create('empty domain');
   thr.pipe.send(['PLAIN',domain,filename]);
+  //  Wait for completion
+  thr.Pipe.recv(response);
+end;
+
+procedure TZMQAuth.ConfigureCurve( domain, location: Utf8String );
+var
+  response: Utf8String;
+begin
+  if domain = '' then
+    raise EZMQException.Create('empty domain');
+  thr.pipe.send(['CURVE',domain,location]);
   //  Wait for completion
   thr.Pipe.recv(response);
 end;

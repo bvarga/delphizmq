@@ -12,6 +12,9 @@
 			<Projects Include="woodhouse.dproj">
 				<Dependencies/>
 			</Projects>
+			<Projects Include="stonehouse.dproj">
+				<Dependencies/>
+			</Projects>
 		</ItemGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -47,14 +50,23 @@
 		<Target Name="woodhouse:Make">
 			<MSBuild Projects="woodhouse.dproj" Targets="Make"/>
 		</Target>
+		<Target Name="stonehouse">
+			<MSBuild Projects="stonehouse.dproj"/>
+		</Target>
+		<Target Name="stonehouse:Clean">
+			<MSBuild Projects="stonehouse.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="stonehouse:Make">
+			<MSBuild Projects="stonehouse.dproj" Targets="Make"/>
+		</Target>
 		<Target Name="Build">
-			<CallTarget Targets="grasslands;strawhouse;woodhouse"/>
+			<CallTarget Targets="grasslands;strawhouse;woodhouse;stonehouse"/>
 		</Target>
 		<Target Name="Clean">
-			<CallTarget Targets="grasslands:Clean;strawhouse:Clean;woodhouse:Clean"/>
+			<CallTarget Targets="grasslands:Clean;strawhouse:Clean;woodhouse:Clean;stonehouse:Clean"/>
 		</Target>
 		<Target Name="Make">
-			<CallTarget Targets="grasslands:Make;strawhouse:Make;woodhouse:Make"/>
+			<CallTarget Targets="grasslands:Make;strawhouse:Make;woodhouse:Make;stonehouse:Make"/>
 		</Target>
 		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
 	</Project>

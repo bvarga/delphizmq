@@ -37,9 +37,16 @@ begin
   //  the server. The client must know the server's public key
   //  to make a CURVE connection.
   client_cert := TZMQCert.Create();
-  client_cert.random;
+  client_cert.publicKey.txt := 'g#=r=P%xlhehg8UMS--Fj2r/r][}>}s@ED=T#WCd';
+  client_cert.secretKey.txt := 'xi#9aSD5+)YDXBL+)d83R{pZ#Ox&d#FBRLJf@o0$';
+
+  //client_cert.random;
   server_cert := TZMQCert.Create();
-  server_cert.random;
+  server_cert.publicKey.txt := 'm7rX=kp/&HZ.O50ReKaz9H(L:S86I5y$E>j/nPCp';
+  server_cert.secretKey.txt := ']V46.D$P@D&GN9nv^uaZ5.kOb^3+&vh#BR1!anlk';
+
+  //server_cert.random;
+
   server_key := server_cert.publicKey;
 
   //  Create and bind server socket

@@ -703,7 +703,8 @@ type
     mechanism: String;            //  Security mechansim
     username: String;             //  PLAIN user name
     password: String;             //  PLAIN password, in clear text
-    client_key: String;           //  CURVE client public key in ASCII
+    client_key: TCurveKey;
+    //client_key: String;           //  CURVE client public key in ASCII
     constructor Create( lHandler: TZMQSocket );
     destructor Destroy; override;
 
@@ -3136,6 +3137,8 @@ end;
 constructor TZAPRequest.Create( lHandler: TZMQSocket );
 var
   request: TZMQMsg;
+  frame: TZMQFrame;
+  key: TCurveKeyBin;
 begin
 
   //  Store handler socket so we can send a reply easily
@@ -3162,7 +3165,16 @@ begin
     password := request.popstr;
   end else if mechanism = 'CURVE' then
   begin
-    raise EZMQException.Create('todo ZAPRequest CURVE msg');
+    //raise EZMQException.Create('todo ZAPRequest CURVE msg');
+    frame := request.pop;
+    if frame.size <> 32 then
+      raise EZMQException.Create('frame size is not equal to 32');
+
+    System.Move( frame.data^, key[0], 32);
+    client_key := TCurveKey.Create;
+    client_key.bin := key;
+
+    frame.Free;
     {
     zframe_t *frame = zmsg_pop (request);
     assert (zframe_size (frame) == 32);
@@ -3424,7 +3436,38 @@ end;
 
 function TZMQAgent.authenticateCurve( request: TZAPRequest ): Boolean;
 begin
-  raise EZMQException.Create('todo agent authenticateCurve');
+
+  if allow_any then
+  begin
+    if verbose then
+      writeln('I: ALLOWED (CURVE allow any client)');
+    result := true;
+  end else begin
+    raise EZMQException.Create('todo agent authenticateCurve');
+
+  end;
+
+
+(*
+    //  TODO: load metadata from certificate and return via ZAP response
+    if (self->allow_any) {
+        if (self->verbose)
+            printf ("I: ALLOWED (CURVE allow any client)\n");
+        return true;
+    }
+    else
+    if (self->certstore
+    &&  zcertstore_lookup (self->certstore, request->client_key)) {
+        if (self->verbose)
+            printf ("I: ALLOWED (CURVE) client_key=%s\n", request->client_key);
+        return true;
+    }
+    else {
+        if (self->verbose)
+            printf ("I: DENIED (CURVE) client_key=%s\n", request->client_key);
+        return false;
+    }
+*)
 end;
 { TZMQAuth }
 

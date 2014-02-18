@@ -3404,10 +3404,9 @@ begin
     request.Free;
   end else
   begin
-    // zap_request_reply (request, "500", "Internal error");
+    request.Reply('500', 'Internal error');
   end;
   result := 0;
-
 end;
 
 function TZMQAgent.authenticatePlain( request: TZAPRequest ): Boolean;
@@ -3509,7 +3508,6 @@ var
   response: Utf8String;
 begin
   thr.Pipe.send(['VERBOSE', BoolToStr(Value)]);
-  // zstr_send  (self->pipe, "%d", verbose); ???????????
   //  Wait for completion
   thr.Pipe.recv( response );
   fVerbose := Value;
@@ -3520,7 +3518,6 @@ var
   response: Utf8String;
 begin
   thr.Pipe.send(['ALLOW', address]);
-  //  Wait for completion
   thr.Pipe.recv( response );
 end;
 
@@ -3529,7 +3526,6 @@ var
   response: Utf8String;
 begin
   thr.Pipe.send(['DENY', address]);
-  //  Wait for completion
   thr.Pipe.recv( response );
 end;
 
@@ -3540,7 +3536,6 @@ begin
   if domain = '' then
     raise EZMQException.Create('empty domain');
   thr.pipe.send(['PLAIN',domain,filename]);
-  //  Wait for completion
   thr.Pipe.recv(response);
 end;
 
@@ -3551,7 +3546,6 @@ begin
   if domain = '' then
     raise EZMQException.Create('empty domain');
   thr.pipe.send(['CURVE',domain,location]);
-  //  Wait for completion
   thr.Pipe.recv(response);
 end;
 

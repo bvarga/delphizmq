@@ -828,7 +828,7 @@ end;
 
 destructor TZMQMsg.Destroy;
 begin
-  msgs.Clear;
+  Clear;
   msgs.Free;
   inherited;
 end;
@@ -1017,6 +1017,8 @@ var
 begin
   for i := 0 to size - 1 do
     Item[i].Free;
+  msgs.Clear;
+  csize := 0;
   cursor := 0;
 end;
 

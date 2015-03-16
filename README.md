@@ -187,7 +187,8 @@ end;
 // Register the callback
 socket.RegisterMonitor( MonitorCallback, cZMQMonitorEventsAll );
 
-// The `MonitorCallback` is called from a separate thread, created by `RegisterMonitor`
+// The `MonitorCallback` is called from a separate thread,
+// created by `RegisterMonitor`
 
 // you can deregister the monitoring with calling.
 socket.DeRegisterMonitor;

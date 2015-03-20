@@ -1,5 +1,5 @@
 {
-    Copyright (c) 2012 Varga Bal·zs (bb.varga@gmail.com)
+    Copyright (c) 2012 Varga Bal√°zs (bb.varga@gmail.com)
 
     This file is part of 0MQ Delphi binding
 
@@ -2615,8 +2615,12 @@ begin
     p := capture.SocketPtr
   else
     p := nil;
+    
+  {$ifdef zmq3}
   if zmq_proxy( frontend.SocketPtr, backend.SocketPtr, p ) <> -1 then
     raise EZMQException.Create( 'Proxy does not return -1' );
+  {$endif}
+  
   //raise EZMQException.Create;
 end;
 
@@ -2695,7 +2699,9 @@ end;
 
 procedure ZMQTerminate;
 begin
+  {$ifndef UNIX}  
   GenerateConsoleCtrlEvent( CTRL_C_EVENT, 0 );
+  {$endif}
 end;
 
 { TZMQThread }

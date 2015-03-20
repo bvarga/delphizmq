@@ -2699,7 +2699,9 @@ end;
 
 procedure ZMQTerminate;
 begin
+  {$ifndef UNIX}  
   GenerateConsoleCtrlEvent( CTRL_C_EVENT, 0 );
+  {$endif}
 end;
 
 { TZMQThread }

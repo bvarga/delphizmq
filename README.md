@@ -90,7 +90,7 @@ mcount := socket.recv( tsl );
 **CTRL+C Handling**
 
 it's a bit tricky. On windows signal handling is different, than in posix systems.
-Blocking calls won't receive SIGINT, just block continously. To overcome this issue,
+Blocking calls won't receive SIGINT, just block continuously. To overcome this issue,
 the installed handler terminates the contexts, so blocking calls like `recv`, `poll`,
 etc... will receive `ETERM`. It's just on Windows.
 

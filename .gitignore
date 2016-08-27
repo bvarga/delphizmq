@@ -1,4 +1,6 @@
 *.~*
+*.o
+*.ppu
 *.dcu
 *.exe
 *.local
@@ -6,3 +8,4 @@
 __history
 fastmm4
 dunit
+backup/*

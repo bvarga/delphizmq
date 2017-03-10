@@ -479,6 +479,10 @@ type
     function Shadow: TZMQContext;
     function Socket( stype: TZMQSocketType ): TZMQSocket;
     procedure Terminate;
+
+    {$IFDEF zmq3}
+    procedure Shutdown;
+    {$ENDIF}
     property ContextPtr: Pointer read fContext;
 
     //  < -1 means dont change linger when destroy
@@ -2208,6 +2212,13 @@ function TZMQContext.Shadow: TZMQContext;
 begin
   result := TZMQContext.createShadow( self );
 end;
+
+{$IFDEF zmq3}
+procedure TZMQContext.Shutdown;
+begin
+  zmq_ctx_shutdown(ContextPtr);
+end;
+{$ENDIF}
 
 function TZMQContext.Socket( stype: TZMQSocketType ): TZMQSocket;
 begin

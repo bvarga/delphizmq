@@ -114,6 +114,7 @@ function zmq_ctx_new: Pointer; cdecl; external {$IFNDEF ZMQ_STATIC_LINK}libzmq{$
 function zmq_ctx_destroy( context: Pointer ): Integer; cdecl; external {$IFNDEF ZMQ_STATIC_LINK}libzmq{$ENDIF};
 function zmq_ctx_set( context: Pointer; option: Integer; optval: Integer ): Integer; cdecl; external {$IFNDEF ZMQ_STATIC_LINK}libzmq{$ENDIF};
 function zmq_ctx_get( context: Pointer; option: Integer ): Integer; cdecl; external {$IFNDEF ZMQ_STATIC_LINK}libzmq{$ENDIF};
+function zmq_ctx_shutdown( context: Pointer ): Integer; cdecl; external {$IFNDEF ZMQ_STATIC_LINK}libzmq{$ENDIF};
 {$endif}
 
 {*  Old (legacy) API                                                          *}

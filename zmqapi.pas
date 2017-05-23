@@ -2035,7 +2035,12 @@ begin
   while bRcvMore do
   begin
     msg := TZMQFrame.create;
-    rc := recv( msg, flags );
+    try
+      rc := recv( msg, flags );
+    except
+      msg.Free;
+      raise;
+    end;
     if rc <> -1 then
     begin
       msgs.Add( msg );

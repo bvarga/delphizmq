@@ -1,4 +1,4 @@
-{
+﻿{
     Copyright (c) 2012 Varga Balázs (bb.varga@gmail.com)
 
     This file is part of 0MQ Delphi binding
@@ -114,7 +114,10 @@ type
 
     function getAsUtf8String: Utf8String;
     procedure setAsUtf8String(const Value: Utf8String);
-
+    function getAsByte: Byte;
+    procedure setAsByte(const Value: Byte);
+    function getAsBytes: TBytes;
+    procedure setAsBytes(const Value: TBytes);
   public
     constructor create; overload;
     constructor create( size: size_t ); overload;
@@ -142,6 +145,8 @@ type
     property asUtf8String: Utf8String read getAsUtf8String write setAsUtf8String;
     property asHexString: AnsiString read getAsHexString write setAsHexString;
     property asInteger: Integer read getAsInteger write setAsInteger;
+    property asByte: Byte read getAsByte write setAsByte;
+    property asBytes: TBytes read getAsBytes write setAsBytes;
   end;
 
   // for multipart message
@@ -182,6 +187,8 @@ type
    function add( msg: TZMQFrame ): Integer;
    function addstr( msg: Utf8String ): Integer;
    function addint( msg: Integer ): Integer;
+   function addByte( msg: Byte): Integer;
+   function addBytes(const msg: TBytes ): Integer;
 
    // Push frame plus empty frame to front of message, before first frame.
    // Message takes ownership of frame, will destroy it when message is sent.
@@ -373,6 +380,7 @@ type
     function send( var msg: TZMQFrame; flags: TZMQSendFlags = [] ): Integer; overload;
     function send( strm: TStream; size: Integer; flags: TZMQSendFlags = [] ): Integer; overload;
     function send( msg: Utf8String; flags: TZMQSendFlags = [] ): Integer; overload;
+    function send( msg: TBytes; flags: TZMQSendFlags = [] ): Integer; overload;
 
     function send( var msgs: TZMQMsg; dontwait: Boolean = false ): Integer; overload;
     function send( msg: Array of Utf8String; dontwait: Boolean = false ): Integer; overload;
@@ -384,6 +392,7 @@ type
     function recv( msg: TZMQFrame; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( strm: TStream; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( var msg: Utf8String; flags: TZMQRecvFlags = [] ): Integer; overload;
+    function recv( var msg: TBytes; flags: TZMQRecvFlags = [] ): Integer; overload;
 
     function recv( var msgs: TZMQMsg; flags: TZMQRecvFlags = [] ): Integer; overload;
     function recv( msg: TStrings; flags: TZMQRecvFlags = [] ): Integer; overload;
@@ -470,6 +479,10 @@ type
     function Shadow: TZMQContext;
     function Socket( stype: TZMQSocketType ): TZMQSocket;
     procedure Terminate;
+
+    {$IFDEF zmq3}
+    procedure Shutdown;
+    {$ENDIF}
     property ContextPtr: Pointer read fContext;
 
     //  < -1 means dont change linger when destroy
@@ -758,6 +771,17 @@ begin
     result := asUtf8String;
 end;
 
+function TZMQFrame.getAsByte: Byte;
+begin
+  Result := Byte(data^);
+end;
+
+function TZMQFrame.getAsBytes: TBytes;
+begin
+  SetLength(Result, size);
+  System.Move(data^, Result[0], size);
+end;
+
 function TZMQFrame.getAsHexString: AnsiString;
 begin
   SetLength( result, size * 2 );
@@ -775,6 +799,21 @@ var
 begin
   SetString( t, PAnsiChar(data), size );
   result := t;
+end;
+
+procedure TZMQFrame.setAsByte(const Value: Byte);
+var
+  iSize: Integer;
+begin
+  iSize := SizeOf( Value );
+  rebuild( iSize );
+  Integer(data^) := Value;
+end;
+
+procedure TZMQFrame.setAsBytes(const Value: TBytes);
+begin
+  rebuild(Length(Value));
+  System.Move(Value[0], data^, Length(Value));
 end;
 
 procedure TZMQFrame.setAsHexString( const Value: AnsiString );
@@ -918,6 +957,24 @@ var
 begin
   frame := TZMQFrame.create;
   frame.asUtf8String := msg;
+  result := add( frame );
+end;
+
+function TZMQMsg.addByte(msg: Byte): Integer;
+var
+  frame: TZMQFrame;
+begin
+  frame := TZMQFrame.create( sizeOf( Byte ) );
+  frame.asByte := msg;
+  result := add( frame );
+end;
+
+function TZMQMsg.addBytes(const msg: TBytes): Integer;
+var
+  frame: TZMQFrame;
+begin
+  frame := TZMQFrame.create( Length(msg) );
+  frame.asBytes := msg;
   result := add( frame );
 end;
 
@@ -1780,6 +1837,20 @@ begin
   end;
 end;
 
+function TZMQSocket.send(msg: TBytes; flags: TZMQSendFlags): Integer;
+var
+  frame: TZMQFrame;
+begin
+  frame := TZMQFrame.create;
+  try
+    frame.asBytes := msg;
+    result := send( frame, flags );
+  finally
+    if frame <> nil then
+      frame.Free;
+  end;
+end;
+
 {$ifdef zmq3}
 function TZMQSocket.recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
 var
@@ -1958,13 +2029,18 @@ var
 begin
   if msgs = nil then
     msgs := TZMQMsg.Create;
-    
+
   bRcvMore := True;
   result := 0;
   while bRcvMore do
   begin
     msg := TZMQFrame.create;
-    rc := recv( msg, flags );
+    try
+      rc := recv( msg, flags );
+    except
+      msg.Free;
+      raise;
+    end;
     if rc <> -1 then
     begin
       msgs.Add( msg );
@@ -1992,6 +2068,19 @@ begin
       msg.Add( msgs[i].asUtf8String );
   finally
     msgs.Free;
+  end;
+end;
+
+function TZMQSocket.recv(var msg: TBytes; flags: TZMQRecvFlags): Integer;
+var
+  frame: TZMQFrame;
+begin
+  frame := TZMQFrame.Create;
+  try
+    Result := recv( frame, flags );
+    msg := frame.asBytes;
+  finally
+    frame.Free;
   end;
 end;
 
@@ -2128,6 +2217,13 @@ function TZMQContext.Shadow: TZMQContext;
 begin
   result := TZMQContext.createShadow( self );
 end;
+
+{$IFDEF zmq3}
+procedure TZMQContext.Shutdown;
+begin
+  zmq_ctx_shutdown(ContextPtr);
+end;
+{$ENDIF}
 
 function TZMQContext.Socket( stype: TZMQSocketType ): TZMQSocket;
 begin

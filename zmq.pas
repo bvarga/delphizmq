@@ -1,5 +1,5 @@
 {
-    Copyright (c) 2012 Varga Bal·zs (bb.varga@gmail.com)
+    Copyright (c) 2012 Varga Bal√°zs (bb.varga@gmail.com)
 
     This file is part of 0MQ Delphi binding
 
@@ -23,10 +23,10 @@ unit zmq;
 {$endif}
 
 {$IFDEF ZMQ_STATIC_LINK}
-  {$IFDEF UNIX}
+  {$IFDEF UNIX}       // tested on linux
     {$LINKLIB stdc++}
     {$LINKLIB gcc_s}
-    {$LINK /usr/local/lib/libzmq.a}
+    {$LINKLIB zmq.a}  // /usr/local/lib/libzmq.a <- ./configure --enable-static 
   {$ENDIF}
 {$ENDIF}
 

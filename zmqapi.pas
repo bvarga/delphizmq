@@ -20,6 +20,9 @@ unit zmqapi;
 
 {$ifdef FPC}
   {$mode delphi}{$H+}
+{$else}
+  {$WARN IMPLICIT_STRING_CAST OFF}
+  {$WARN IMPLICIT_STRING_CAST_LOSS OFF}
 {$endif}
 
 {$I zmq.inc}
@@ -796,11 +799,8 @@ begin
 end;
 
 function TZMQFrame.getAsUtf8String: Utf8String;
-var
-  t: AnsiString;
 begin
-  SetString( t, PAnsiChar(data), size );
-  result := t;
+  SetString( Result, PAnsiChar(data), size );
 end;
 
 procedure TZMQFrame.setAsByte(const Value: Byte);
@@ -1105,7 +1105,7 @@ var
 begin
   for i := 0 to size - 1 do
   begin
-    result := result + item[i].asHexString;
+    result := result + RawByteString(item[i].asHexString);
     if i < size - 1 then
       result := result + #13 + #10;
   end;
@@ -1674,8 +1674,6 @@ end;
 
 {$ifdef zmq3}
 function TZMQSocket.sendBuffer( const Buffer; len: Size_t; flags: TZMQSendFlags = [] ): Integer;
-var
-  errn: Integer;
 begin
   result := zmq_send( SocketPtr, Buffer, len, Byte( flags ) );
   if result < 0 then
@@ -1686,8 +1684,6 @@ end;
 // sends the msg, and FreeAndNils it if successful. the return value is the number of
 // bytes in the msg if successful, if not returns -1, and the msgs is not discarded.
 function TZMQSocket.send( var msg: TZMQFrame; flags: Integer = 0 ): Integer;
-var
-  errn: Integer;
 begin
   {$ifdef zmq3}
   result := zmq_sendmsg( SocketPtr, msg.fMessage, flags );
@@ -1846,8 +1842,6 @@ end;
 
 {$ifdef zmq3}
 function TZMQSocket.recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
-var
-  errn: Integer;
 begin
   result := zmq_recv( SocketPtr, Buffer, len, Byte( flags ) );
   if result < 0 then
@@ -1951,8 +1945,6 @@ end;
 {$endif}
 
 function TZMQSocket.recv( var msg: TZMQFrame; flags: Integer = 0 ): Integer;
-var
-  errn: Integer;
 begin
   if msg = nil then
     msg := TZMQFrame.Create;

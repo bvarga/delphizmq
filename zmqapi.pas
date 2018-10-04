@@ -1151,7 +1151,8 @@ begin
     DeRegisterMonitor;
   {$endif}
   close;
-  fContext.RemoveSocket( Self );
+  if Assigned(fContext) then
+    fContext.RemoveSocket( Self );
   {$ifdef zmq3}
   fAcceptFilter.Free;
   {$endif}

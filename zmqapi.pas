@@ -20,6 +20,9 @@ unit zmqapi;
 
 {$ifdef FPC}
   {$mode delphi}{$H+}
+{$else}
+  {$WARN IMPLICIT_STRING_CAST OFF}
+  {$WARN IMPLICIT_STRING_CAST_LOSS OFF}
 {$endif}
 
 {$I zmq.inc}
@@ -87,6 +90,8 @@ type
     constructor Create( lerrn: Integer ); overload;
     property Num: Integer read errnum;
   end;
+
+  EZMQTerminate = class(EAbort);
 
   TZMQContext = class;
   TZMQSocket = class;
@@ -794,11 +799,8 @@ begin
 end;
 
 function TZMQFrame.getAsUtf8String: Utf8String;
-var
-  t: AnsiString;
 begin
-  SetString( t, PAnsiChar(data), size );
-  result := t;
+  SetString( Result, PAnsiChar(data), size );
 end;
 
 procedure TZMQFrame.setAsByte(const Value: Byte);
@@ -1103,7 +1105,7 @@ var
 begin
   for i := 0 to size - 1 do
   begin
-    result := result + item[i].asHexString;
+    result := result + RawByteString(item[i].asHexString);
     if i < size - 1 then
       result := result + #13 + #10;
   end;
@@ -1149,7 +1151,8 @@ begin
     DeRegisterMonitor;
   {$endif}
   close;
-  fContext.RemoveSocket( Self );
+  if Assigned(fContext) then
+    fContext.RemoveSocket( Self );
   {$ifdef zmq3}
   fAcceptFilter.Free;
   {$endif}
@@ -1172,6 +1175,8 @@ begin
   if rc = -1 then
   begin
     errn := zmq_errno;
+    if errn = ETERM then
+      raise EZMQTerminate.Create('ZMQ context shutdown');
     if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
       raise EZMQException.Create( errn );
   end else
@@ -1670,47 +1675,32 @@ end;
 
 {$ifdef zmq3}
 function TZMQSocket.sendBuffer( const Buffer; len: Size_t; flags: TZMQSendFlags = [] ): Integer;
-var
-  errn: Integer;
 begin
   result := zmq_send( SocketPtr, Buffer, len, Byte( flags ) );
-  if result < -1 then
-    raise EZMQException.Create('zmq_send return value less than -1.')
-  else if result = -1 then
-  begin
-    errn := zmq_errno;
-    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
-      raise EZMQException.Create( errn );
-  end;
+  if result < 0 then
+    result := CheckResult(result);
 end;
 {$endif}
 
 // sends the msg, and FreeAndNils it if successful. the return value is the number of
 // bytes in the msg if successful, if not returns -1, and the msgs is not discarded.
 function TZMQSocket.send( var msg: TZMQFrame; flags: Integer = 0 ): Integer;
-var
-  errn: Integer;
 begin
   {$ifdef zmq3}
   result := zmq_sendmsg( SocketPtr, msg.fMessage, flags );
   //result := zmq_msg_send( msg.fMessage, SocketPtr, flags );
 
-  if result < -1 then
-    raise EZMQException.Create('zmq_sendmsg return value less than -1.')
-  else if result = -1 then
-  begin
-    errn := zmq_errno;
-    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
-      raise EZMQException.Create( errn );
-  end else
+  if result < 0 then
+    result := CheckResult(result)
+  else
     FreeAndNil( msg );
   {$else}
   result := msg.size;
   try
-  if CheckResult( zmq_send( SocketPtr, msg.fMessage, flags ) ) = 0 then
-    FreeAndNil( msg )
-  else
-    result := -1;
+    if CheckResult( zmq_send( SocketPtr, msg.fMessage, flags ) ) = 0 then
+      FreeAndNil( msg )
+    else
+      result := -1;
   except
     on e: Exception do
     begin
@@ -1853,18 +1843,10 @@ end;
 
 {$ifdef zmq3}
 function TZMQSocket.recvBuffer( var Buffer; len: size_t; flags: TZMQRecvFlags = [] ): Integer;
-var
-  errn: Integer;
 begin
   result := zmq_recv( SocketPtr, Buffer, len, Byte( flags ) );
-  if result < -1 then
-    raise EZMQException.Create('zmq_recv return value less than -1.')
-  else if result = -1 then
-  begin
-    errn := zmq_errno;
-    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
-      raise EZMQException.Create( errn );
-  end;
+  if result < 0 then
+    result := CheckResult(result);
 end;
 
 procedure MonitorProc( ZMQMonitorRec: PZMQMonitorRec );
@@ -1964,8 +1946,6 @@ end;
 {$endif}
 
 function TZMQSocket.recv( var msg: TZMQFrame; flags: Integer = 0 ): Integer;
-var
-  errn: Integer;
 begin
   if msg = nil then
     msg := TZMQFrame.Create;
@@ -1973,16 +1953,10 @@ begin
     msg.rebuild;
 
   {$ifdef zmq3}
-  result := zmq_recvmsg( SocketPtr, msg.fMessage, flags );
+  result := zmq_recvmsg(SocketPtr, msg.fMessage, flags);
   // result := zmq_msg_recv( msg.fMessage, SocketPtr, flags );
-  if result < -1 then
-    raise EZMQException.Create('zmq_recvmsg return value less than -1.')
-  else if result = -1 then
-  begin
-    errn := zmq_errno;
-    if ( errn <> ZMQEAGAIN ) or fRaiseEAgain then
-      raise EZMQException.Create( errn );
-  end;
+  if Result < 0 then
+    Result := CheckResult(Result);
   {$else}
   result := -1;
   if CheckResult( zmq_recv( SocketPtr, msg.fMessage, flags ) ) = 0 then
@@ -2410,19 +2384,19 @@ var
   reglistcap,
   reglistcount: Integer;
 
-procedure AddToRegList( so: TZMQSocket; ev: TZMQPollEvents; reg: Boolean; sync: Boolean );
-begin
-  if reglistcap = reglistcount then
+  procedure AddToRegList( so: TZMQSocket; ev: TZMQPollEvents; reg: Boolean; sync: Boolean );
   begin
-    reglistcap := reglistcap + 10;
-    SetLength( reglist, reglistcap );
+    if reglistcap = reglistcount then
+    begin
+      reglistcap := reglistcap + 10;
+      SetLength( reglist, reglistcap );
+    end;
+    reglist[reglistcount].socket := so;
+    reglist[reglistcount].events := ev;
+    reglist[reglistcount].reg := reg;
+    reglist[reglistcount].sync := sync;
+    inc( reglistcount );
   end;
-  reglist[reglistcount].socket := so;
-  reglist[reglistcount].events := ev;
-  reglist[reglistcount].reg := reg;
-  reglist[reglistcount].sync := sync;
-  inc( reglistcount );
-end;
 
 begin
   reglistcap := 10;
@@ -2533,11 +2507,10 @@ begin
   except
     on e: Exception do
     begin
-      if ( e is EZMQException ) and
-         ( EZMQException(e).Num = ETERM ) then
+      if ( e is EZMQTerminate ) then
         Terminate;
-    if Assigned( fOnException ) then
-      fOnException( e );
+      if Assigned( fOnException ) then
+        fOnException( e );
     end;
   end;
   msg.Free;
@@ -2610,6 +2583,7 @@ end;
 function TZMQPoller.poll( timeout: Integer = -1; lPollNumber: Integer = -1 ): Integer;
 var
   pc, i: Integer;
+  errno: Integer;
 begin
   if not fSync then
     raise EZMQException.Create('Poller hasn''t created in Synchronous mode');
@@ -2633,7 +2607,13 @@ begin
 
   result := zmq_poll( fPollItem[0], pc, timeout );
   if result < 0 then
-    raise EZMQException.Create
+  begin
+    errno := zmq_errno;
+    if errno = ETERM then
+      raise EZMQTerminate.Create('Context terminating')
+    else
+      raise EZMQException.Create(errno);
+  end;
 end;
 
 function TZMQPoller.getPollResult( indx: Integer ): TZMQPollItem;
@@ -2690,6 +2670,7 @@ end;
 function ZMQPoll( var pia: TZMQPollItem; piaSize: Integer = 1; timeout: Integer = -1 ): Integer; overload;
 var
   PollItem: zmq.pollitem_t;
+  errno: Integer;
 begin
   PollItem.socket := pia.Socket.SocketPtr;
   PollItem.fd := 0;
@@ -2697,7 +2678,13 @@ begin
   PollItem.revents := 0;
   result := zmq_poll( PollItem, piaSize, timeout );
   if result < 0 then
-    raise EZMQException.Create;
+  begin
+    errno := zmq_errno;
+    if errno = ETERM then
+      raise EZMQTerminate.Create('Context terminating')
+    else
+      raise EZMQException.Create(errno);
+  end;
   Byte(pia.revents) := PollItem.revents;
 end;
 

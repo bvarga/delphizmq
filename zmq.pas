@@ -382,7 +382,11 @@ const
 type
   pollitem_t = record
     socket: Pointer;
-    fd: Integer; // TSocket???
+    {$ifdef WIN64}
+    fd: Int64; // TSocket???
+    {$else}
+    fd: Cardinal;
+    {$endif}
     events: Word;
     revents: Word;
   end;

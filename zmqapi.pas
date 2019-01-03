@@ -1902,7 +1902,11 @@ var
   {$ifdef UNIX}
   tid: QWord;
   {$else}
-  tid: Cardinal;
+    {$ifdef FPC}
+    tid: SizeUInt;
+    {$else}
+    tid: Cardinal;
+    {$endif}
   {$endif}
 begin
   if fMonitorRec <> nil then
